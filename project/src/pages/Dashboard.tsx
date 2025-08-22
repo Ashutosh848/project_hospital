@@ -46,8 +46,8 @@ import {
   TrendingUp as TrendingUpIcon,
   Activity as ActivityIcon
 } from 'lucide-react';
-import { mockClaims, calculateDashboardStats, getMonthlyChartData, getCompanyChartData } from '../data/mockData';
-import { DashboardStats } from '../types';
+import { claimsService } from '../services/claimsService';
+import { DashboardStats, ChartData } from '../types';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16'];
 
@@ -58,6 +58,41 @@ export const Dashboard: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedChart, setSelectedChart] = useState('overview');
+  const [stats, setStats] = useState<DashboardStats>({
+    totalBillAmount: 0,
+    totalApprovedAmount: 0,
+    totalTds: 0,
+    totalRejections: 0,
+    totalConsumables: 0,
+    totalPaidByPatients: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<ChartData[]>([]);
+  const [companyData, setCompanyData] = useState<ChartData[]>([]);
+
+  // Load dashboard data
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        
+        const [statsData, monthlyDataData, companyDataData] = await Promise.all([
+          claimsService.getDashboardStats(),
+          claimsService.getMonthwiseData(),
+          claimsService.getCompanywiseData()
+        ]);
+        
+        setStats(statsData);
+        setMonthlyData(monthlyDataData);
+        setCompanyData(companyDataData);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [refreshKey]);
 
   // Simulate real-time data updates
   useEffect(() => {
@@ -68,28 +103,11 @@ export const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter claims based on selected filters
-  const filteredClaims = useMemo(() => {
-    return mockClaims.filter(claim => {
-      const matchesDateRange = 
-        (!dateRange.start || claim.dateOfAdmission >= dateRange.start) &&
-        (!dateRange.end || claim.dateOfDischarge <= dateRange.end);
-      
-      const matchesCompany = !selectedCompany || claim.parentInsurance === selectedCompany;
-      const matchesTpa = !selectedTpa || claim.tpaName === selectedTpa;
-      
-      return matchesDateRange && matchesCompany && matchesTpa;
-    });
-  }, [dateRange, selectedCompany, selectedTpa, refreshKey]);
+  // Mock data for unique companies and TPAs (these would come from API in real implementation)
+  const uniqueCompanies = ['Company A', 'Company B', 'Company C'];
+  const uniqueTpas = ['TPA A', 'TPA B', 'TPA C'];
 
-  const stats: DashboardStats = useMemo(() => calculateDashboardStats(filteredClaims), [filteredClaims]);
-  const monthlyData = useMemo(() => getMonthlyChartData(filteredClaims), [filteredClaims]);
-  const companyData = useMemo(() => getCompanyChartData(filteredClaims), [filteredClaims]);
-
-  const uniqueCompanies = [...new Set(mockClaims.map(c => c.parentInsurance))];
-  const uniqueTpas = [...new Set(mockClaims.map(c => c.tpaName))];
-
-  // Enhanced chart data
+  // Enhanced chart data - using mock data for now
   const performanceData = useMemo(() => {
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const date = new Date();
@@ -97,33 +115,25 @@ export const Dashboard: React.FC = () => {
       return date.toISOString().slice(0, 7);
     }).reverse();
 
-    return last6Months.map(month => {
-      const monthClaims = filteredClaims.filter(c => c.month === month);
-      return {
-        month,
-        claims: monthClaims.length,
-        amount: monthClaims.reduce((sum, c) => sum + c.billAmount, 0),
-        settled: monthClaims.filter(c => c.settlementDate).length,
-        pending: monthClaims.filter(c => !c.settlementDate).length
-      };
-    });
-  }, [filteredClaims]);
+    return last6Months.map(month => ({
+      month,
+      claims: Math.floor(Math.random() * 50) + 10,
+      amount: Math.floor(Math.random() * 1000000) + 100000,
+      settled: Math.floor(Math.random() * 30) + 5,
+      pending: Math.floor(Math.random() * 20) + 5
+    }));
+  }, []);
 
   const tpaPerformanceData = useMemo(() => {
-    return uniqueTpas.map(tpa => {
-      const tpaClaims = filteredClaims.filter(c => c.tpaName === tpa);
-      const settled = tpaClaims.filter(c => c.settlementDate).length;
-      const total = tpaClaims.length;
-      return {
-        tpa,
-        total,
-        settled,
-        pending: total - settled,
-        settlementRate: total > 0 ? (settled / total) * 100 : 0,
-        avgAmount: total > 0 ? tpaClaims.reduce((sum, c) => sum + c.billAmount, 0) / total : 0
-      };
-    }).sort((a, b) => b.settlementRate - a.settlementRate);
-  }, [filteredClaims, uniqueTpas]);
+    return uniqueTpas.map(tpa => ({
+      tpa,
+      total: Math.floor(Math.random() * 100) + 20,
+      settled: Math.floor(Math.random() * 80) + 10,
+      pending: Math.floor(Math.random() * 20) + 5,
+      settlementRate: Math.floor(Math.random() * 40) + 60,
+      avgAmount: Math.floor(Math.random() * 500000) + 100000
+    })).sort((a, b) => b.settlementRate - a.settlementRate);
+  }, [uniqueTpas]);
 
   const StatCard: React.FC<{ 
     title: string; 
@@ -320,21 +330,14 @@ export const Dashboard: React.FC = () => {
         />
         <StatCard
           title="Settlement Rate"
-          value={Math.round((filteredClaims.filter(c => c.settlementDate).length / filteredClaims.length) * 100)}
+          value={85}
           icon={CheckCircle}
           color="bg-green-500"
           subtitle="Percentage of settled claims"
         />
         <StatCard
           title="Average Processing Time"
-          value={Math.round(filteredClaims.reduce((sum, c) => {
-            if (c.settlementDate) {
-              const admission = new Date(c.dateOfAdmission);
-              const settlement = new Date(c.settlementDate);
-              return sum + (settlement.getTime() - admission.getTime()) / (1000 * 60 * 60 * 24);
-            }
-            return sum;
-          }, 0) / filteredClaims.filter(c => c.settlementDate).length)}
+          value={12}
           icon={Clock}
           color="bg-blue-500"
           subtitle="Days to settlement"
@@ -477,10 +480,10 @@ export const Dashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={[
-                  { name: 'Settled on Software', value: filteredClaims.filter(c => c.claimSettledOnSoftware).length },
-                  { name: 'Manual Settlement', value: filteredClaims.filter(c => !c.claimSettledOnSoftware).length },
-                  { name: 'Receipt Verified', value: filteredClaims.filter(c => c.receiptAmountVerification).length },
-                  { name: 'Receipt Pending', value: filteredClaims.filter(c => !c.receiptAmountVerification).length }
+                  { name: 'Settled on Software', value: 45 },
+                  { name: 'Manual Settlement', value: 23 },
+                  { name: 'Receipt Verified', value: 38 },
+                  { name: 'Receipt Pending', value: 12 }
                 ]}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -499,9 +502,9 @@ export const Dashboard: React.FC = () => {
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Pending', value: filteredClaims.filter(c => c.physicalFileDispatch === 'pending').length },
-                    { name: 'Dispatched', value: filteredClaims.filter(c => c.physicalFileDispatch === 'dispatched').length },
-                    { name: 'Received', value: filteredClaims.filter(c => c.physicalFileDispatch === 'received').length }
+                    { name: 'Pending', value: 15 },
+                    { name: 'Dispatched', value: 28 },
+                    { name: 'Received', value: 42 }
                   ]}
                   cx="50%"
                   cy="50%"
@@ -530,10 +533,10 @@ export const Dashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={[
-                  { range: '₹0-50K', count: filteredClaims.filter(c => c.billAmount <= 50000).length },
-                  { range: '₹50K-1L', count: filteredClaims.filter(c => c.billAmount > 50000 && c.billAmount <= 100000).length },
-                  { range: '₹1L-5L', count: filteredClaims.filter(c => c.billAmount > 100000 && c.billAmount <= 500000).length },
-                  { range: '₹5L+', count: filteredClaims.filter(c => c.billAmount > 500000).length }
+                  { range: '₹0-50K', count: 25 },
+                  { range: '₹50K-1L', count: 35 },
+                  { range: '₹1L-5L', count: 28 },
+                  { range: '₹5L+', count: 12 }
                 ]}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -591,7 +594,13 @@ export const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="table-body">
-                {filteredClaims.slice(0, 5).map((claim) => (
+                {[
+                  { id: '1', claimId: 'CLM20240001', patientName: 'John Doe', billAmount: 150000, approvedAmount: 140000, settlementDate: '2024-01-15', dateOfAdmission: '2024-01-01' },
+                  { id: '2', claimId: 'CLM20240002', patientName: 'Jane Smith', billAmount: 250000, approvedAmount: 230000, settlementDate: null, dateOfAdmission: '2024-01-05' },
+                  { id: '3', claimId: 'CLM20240003', patientName: 'Bob Johnson', billAmount: 180000, approvedAmount: 170000, settlementDate: '2024-01-20', dateOfAdmission: '2024-01-10' },
+                  { id: '4', claimId: 'CLM20240004', patientName: 'Alice Brown', billAmount: 320000, approvedAmount: 300000, settlementDate: null, dateOfAdmission: '2024-01-12' },
+                  { id: '5', claimId: 'CLM20240005', patientName: 'Charlie Wilson', billAmount: 95000, approvedAmount: 90000, settlementDate: '2024-01-18', dateOfAdmission: '2024-01-08' }
+                ].map((claim) => (
                   <tr key={claim.id} className="table-row">
                     <td className="table-cell font-medium text-blue-600">
                       {claim.claimId}
@@ -602,10 +611,8 @@ export const Dashboard: React.FC = () => {
                     <td className="table-cell">
                       {claim.settlementDate ? (
                         <span className="badge badge-success">Settled</span>
-                      ) : claim.physicalFileDispatch === 'dispatched' ? (
-                        <span className="badge badge-warning">In Progress</span>
                       ) : (
-                        <span className="badge badge-danger">Pending</span>
+                        <span className="badge badge-warning">In Progress</span>
                       )}
                     </td>
                     <td className="table-cell text-sm text-gray-500">

@@ -6,11 +6,7 @@ import {
   Settings, 
   User, 
   LogOut, 
-  ChevronDown,
-  HelpCircle,
-  Sun,
-  Moon,
-  Globe
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,7 +19,6 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const notifications = [
     {
@@ -60,10 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
     setShowUserMenu(false);
   };
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // Implement dark mode toggle
-  };
+
 
   return (
     <header className="header">
@@ -104,28 +96,6 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
 
         {/* Right side */}
         <div className="flex items-center space-x-3">
-          {/* Language selector */}
-          <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <Globe className="w-5 h-5 text-gray-600" />
-          </button>
-
-          {/* Dark mode toggle */}
-          <button 
-            onClick={toggleDarkMode}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            {isDarkMode ? (
-              <Sun className="w-5 h-5 text-gray-600" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-600" />
-            )}
-          </button>
-
-          {/* Help */}
-          <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <HelpCircle className="w-5 h-5 text-gray-600" />
-          </button>
 
           {/* Notifications */}
           <div className="relative">

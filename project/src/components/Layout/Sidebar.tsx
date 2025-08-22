@@ -10,7 +10,6 @@ import {
   ChevronRight,
   FileText,
   Settings,
-  HelpCircle,
   Activity,
   TrendingUp,
   Shield,
@@ -195,10 +194,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
           {/* Action Buttons */}
           <div className="space-y-2">
-            <button className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded-lg transition-colors">
-              <HelpCircle className="w-4 h-4" />
-              <span>Help & Support</span>
-            </button>
             <button 
               onClick={logout}
               className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

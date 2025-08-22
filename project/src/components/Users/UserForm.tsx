@@ -11,7 +11,7 @@ const schema = yup.object({
   password: yup.string().when('$isEdit', {
     is: false,
     then: (schema) => schema.required('Password is required').min(6, 'Password must be at least 6 characters'),
-    otherwise: (schema) => schema.min(6, 'Password must be at least 6 characters')
+    otherwise: (schema) => schema.optional().min(6, 'Password must be at least 6 characters')
   }),
   role: yup.string().oneOf(['data_entry', 'manager']).required('Role is required')
 });
@@ -41,7 +41,12 @@ export const UserForm: React.FC<UserFormProps> = ({
   } = useForm({
     resolver: yupResolver(schema),
     context: { isEdit },
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      username: initialData.username,
+      email: initialData.email,
+      password: '',
+      role: initialData.role
+    } : {
       username: '',
       email: '',
       password: '',
@@ -74,7 +79,8 @@ export const UserForm: React.FC<UserFormProps> = ({
       createdAt: initialData?.createdAt || new Date().toISOString()
     };
     
-    if (isEdit && !data.password) {
+    // Remove password if it's empty or only whitespace
+    if (!data.password || data.password.trim() === '') {
       delete formattedData.password;
     }
     

@@ -4,7 +4,7 @@ import { ClaimTable } from '../components/Claims/ClaimTable';
 import { ClaimForm } from '../components/Claims/ClaimForm';
 import { ClaimDetailsModal } from '../components/Claims/ClaimDetailsModal';
 import { Claim } from '../types';
-import { mockClaims } from '../data/mockData';
+import { claimsService } from '../services/claimsService';
 import { useToast } from '../hooks/useToast';
 
 export const Claims: React.FC = () => {
@@ -13,12 +13,44 @@ export const Claims: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const { showToast } = useToast();
 
+  const loadClaims = async (page: number = 1, search?: string) => {
+    try {
+      setIsLoading(true);
+      const response = await claimsService.getClaims(page, search);
+      setClaims(response.results);
+      setTotalCount(response.count);
+      setTotalPages(Math.ceil(response.count / 20)); // Page size is 20 from Django settings
+      setCurrentPage(page);
+    } catch (error) {
+      console.error('Failed to load claims:', error);
+      showToast('Failed to load claims', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setClaims(mockClaims);
+    loadClaims();
   }, []);
+
+  useEffect(() => {
+    if (searchTerm) {
+      const timeoutId = setTimeout(() => {
+        loadClaims(1, searchTerm);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      loadClaims(1);
+    }
+  }, [searchTerm]);
 
   const handleCreate = () => {
     setFormMode('create');
@@ -32,10 +64,16 @@ export const Claims: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this claim?')) {
-      setClaims(prev => prev.filter(claim => claim.id !== id));
-      showToast('Claim deleted successfully', 'success');
+      try {
+        await claimsService.deleteClaim(id);
+        setClaims(prev => prev.filter(claim => claim.id !== id));
+        showToast('Claim deleted successfully', 'success');
+      } catch (error) {
+        console.error('Failed to delete claim:', error);
+        showToast('Failed to delete claim', 'error');
+      }
     }
   };
 
@@ -44,22 +82,27 @@ export const Claims: React.FC = () => {
     setIsDetailsOpen(true);
   };
 
-  const handleSubmit = (claimData: Partial<Claim>) => {
-    if (formMode === 'create') {
-      const newClaim: Claim = {
-        id: `claim_${Date.now()}`,
-        ...claimData as Claim
-      };
-      setClaims(prev => [newClaim, ...prev]);
-      showToast('Claim created successfully', 'success');
-    } else if (selectedClaim) {
-      const updatedClaim = { ...selectedClaim, ...claimData };
-      setClaims(prev => prev.map(claim => 
-        claim.id === selectedClaim.id ? updatedClaim : claim
-      ));
-      showToast('Claim updated successfully', 'success');
+  const handleSubmit = async (claimData: Partial<Claim> | FormData) => {
+    try {
+      if (formMode === 'create') {
+        const newClaim = await claimsService.createClaim(claimData as any);
+        setClaims(prev => [newClaim, ...prev]);
+        showToast('Claim created successfully', 'success');
+      } else if (selectedClaim) {
+        const updatedClaim = await claimsService.updateClaim(selectedClaim.id, claimData as any);
+        setClaims(prev => prev.map(claim => 
+          claim.id === selectedClaim.id ? updatedClaim : claim
+        ));
+        showToast('Claim updated successfully', 'success');
+      }
+      setIsFormOpen(false);
+    } catch (error: any) {
+      console.error('Failed to save claim:', error);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+      }
+      showToast('Failed to save claim', 'error');
     }
-    setIsFormOpen(false);
   };
 
   return (
@@ -83,6 +126,12 @@ export const Claims: React.FC = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onView={handleView}
+        isLoading={isLoading}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={loadClaims}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
       />
 
       <ClaimForm
@@ -97,6 +146,7 @@ export const Claims: React.FC = () => {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         claim={selectedClaim}
+        onEdit={handleEdit}
       />
     </div>
   );

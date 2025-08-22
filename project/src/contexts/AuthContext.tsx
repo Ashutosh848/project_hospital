@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AuthUser } from '../types';
+import { authService } from '../services/authService';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -28,53 +29,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (token && userData) {
       setUser(JSON.parse(userData));
+      // Verify token with backend
+      authService.getCurrentUser()
+        .then((user) => {
+          setUser(user);
+          localStorage.setItem('user', JSON.stringify(user));
+        })
+        .catch(() => {
+          // Token is invalid, clear storage
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Mock login logic
-    const mockUsers = [
-      {
-        id: '1',
-        username: 'admin',
-        email: 'admin@hospital.com',
-        role: 'manager' as const,
-        password: 'admin123'
-      },
-      {
-        id: '2',
-        username: 'dataentry',
-        email: 'entry@hospital.com',
-        role: 'data_entry' as const,
-        password: 'entry123'
-      }
-    ];
-
-    const foundUser = mockUsers.find(
-      u => u.username === username && u.password === password
-    );
-
-    if (foundUser) {
-      const authUser: AuthUser = {
-        id: foundUser.id,
-        username: foundUser.username,
-        email: foundUser.email,
-        role: foundUser.role,
-        token: `mock_token_${Date.now()}`
-      };
-
-      localStorage.setItem('token', authUser.token);
-      localStorage.setItem('user', JSON.stringify(authUser));
-      setUser(authUser);
+    try {
+      const response = await authService.login({ username, password });
+      
+      localStorage.setItem('token', response.access);
+      localStorage.setItem('refresh_token', response.refresh);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
       return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
     }
-
-    return false;
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     setUser(null);
   };

@@ -3,37 +3,41 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { X, Upload } from 'lucide-react';
-import { Claim } from '../../types';
+import { Claim, ClaimFormData } from '../../types';
 import { format } from 'date-fns';
 
-const schema = yup.object({
-  dateOfAdmission: yup.string().required('Date of admission is required'),
-  dateOfDischarge: yup.string().required('Date of discharge is required'),
-  tpaName: yup.string().required('TPA name is required'),
-  parentInsurance: yup.string().required('Parent insurance is required'),
-  claimId: yup.string().required('Claim ID is required'),
-  uhidIpNo: yup.string().required('UHID/IP No is required'),
-  patientName: yup.string().required('Patient name is required'),
-  billAmount: yup.number().positive('Bill amount must be positive').required('Bill amount is required'),
-  approvedAmount: yup.number().positive('Approved amount must be positive').required('Approved amount is required'),
-  mouDiscount: yup.number().min(0, 'MOU discount cannot be negative').required('MOU discount is required'),
-  coPay: yup.number().min(0, 'Co-pay cannot be negative').required('Co-pay is required'),
-  consumableDeduction: yup.number().min(0, 'Consumable deduction cannot be negative').required('Consumable deduction is required'),
-  hospitalDiscount: yup.number().min(0, 'Hospital discount cannot be negative').required('Hospital discount is required'),
-  paidByPatient: yup.number().min(0, 'Paid by patient cannot be negative').required('Paid by patient is required'),
-  hospitalDiscountAuthority: yup.string().required('Hospital discount authority is required'),
-  otherDeductions: yup.number().min(0, 'Other deductions cannot be negative').required('Other deductions is required'),
-  physicalFileDispatch: yup.string().oneOf(['pending', 'dispatched', 'received']).required('Physical file dispatch status is required'),
-  dateOfUploadDispatch: yup.string().required('Date of upload/dispatch is required'),
-  queryReplyDate: yup.string().required('Query reply date is required'),
-  settlementDate: yup.string().required('Settlement date is required'),
+const schema = yup.object<ClaimFormData>({
+  date_of_admission: yup.string().required('Date of admission is required'),
+  date_of_discharge: yup.string().required('Date of discharge is required'),
+  tpa_name: yup.string().required('TPA name is required'),
+  parent_insurance: yup.string().required('Parent insurance is required'),
+  claim_id: yup.string().required('Claim ID is required'),
+  uhid_ip_no: yup.string().required('UHID/IP No is required'),
+  patient_name: yup.string().required('Patient name is required'),
+  bill_amount: yup.number().positive('Bill amount must be positive').required('Bill amount is required'),
+  approved_amount: yup.number().positive('Approved amount must be positive').required('Approved amount is required'),
+  mou_discount: yup.number().min(0, 'MOU discount cannot be negative').required('MOU discount is required'),
+  co_pay: yup.number().min(0, 'Co-pay cannot be negative').required('Co-pay is required'),
+  consumable_deduction: yup.number().min(0, 'Consumable deduction cannot be negative').required('Consumable deduction is required'),
+  hospital_discount: yup.number().min(0, 'Hospital discount cannot be negative').required('Hospital discount is required'),
+  paid_by_patient: yup.number().min(0, 'Paid by patient cannot be negative').required('Paid by patient is required'),
+  hospital_discount_authority: yup.string().required('Hospital discount authority is required'),
+  other_deductions: yup.number().min(0, 'Other deductions cannot be negative').required('Other deductions is required'),
+  physical_file_dispatch: yup.string().oneOf(['pending', 'dispatched', 'received', 'not_required']).required('Physical file dispatch status is required'),
+  query_reply_date: yup.string().optional(),
+  settlement_date: yup.string().optional(),
   tds: yup.number().min(0, 'TDS cannot be negative').required('TDS is required'),
-  amountSettledInAccount: yup.number().min(0, 'Amount settled in account cannot be negative').required('Amount settled in account is required'),
-  totalSettledAmount: yup.number().min(0, 'Total settled amount cannot be negative').required('Total settled amount is required'),
-  reasonForLessSettlement: yup.string(),
-  claimSettledOnSoftware: yup.boolean().required(),
-  receiptAmountVerification: yup.boolean().required()
+  amount_settled_in_ac: yup.number().min(0, 'Amount settled in account cannot be negative').required('Amount settled in account is required'),
+  total_settled_amount: yup.number().min(0, 'Total settled amount cannot be negative').required('Total settled amount is required'),
+  reason_less_settlement: yup.string(),
+  claim_settled_software: yup.boolean().required(),
+  receipt_verified_bank: yup.boolean().required(),
+  approval_letter: yup.mixed().optional(),
+  physical_file_upload: yup.mixed().optional(),
+  query_on_claim: yup.mixed().optional()
 });
+
+
 
 interface ClaimFormProps {
   isOpen: boolean;
@@ -57,7 +61,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     reset,
     watch,
     setValue
-  } = useForm({
+  } = useForm<ClaimFormData>({
     resolver: yupResolver(schema),
     defaultValues: initialData || {}
   });
@@ -67,63 +71,131 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
       reset(initialData);
     } else {
       reset({
-        dateOfAdmission: '',
-        dateOfDischarge: '',
-        tpaName: '',
-        parentInsurance: '',
-        claimId: '',
-        uhidIpNo: '',
-        patientName: '',
-        billAmount: 0,
-        approvedAmount: 0,
-        mouDiscount: 0,
-        coPay: 0,
-        consumableDeduction: 0,
-        hospitalDiscount: 0,
-        paidByPatient: 0,
-        hospitalDiscountAuthority: '',
-        otherDeductions: 0,
-        physicalFileDispatch: 'pending',
-        dateOfUploadDispatch: '',
-        queryReplyDate: '',
-        settlementDate: '',
+        date_of_admission: '',
+        date_of_discharge: '',
+        tpa_name: '',
+        parent_insurance: '',
+        claim_id: '',
+        uhid_ip_no: '',
+        patient_name: '',
+        bill_amount: 0,
+        approved_amount: 0,
+        mou_discount: 0,
+        co_pay: 0,
+        consumable_deduction: 0,
+        hospital_discount: 0,
+        paid_by_patient: 0,
+        hospital_discount_authority: '',
+        other_deductions: 0,
+        physical_file_dispatch: 'pending',
+        query_reply_date: '',
+        settlement_date: '',
         tds: 0,
-        amountSettledInAccount: 0,
-        totalSettledAmount: 0,
-        reasonForLessSettlement: '',
-        claimSettledOnSoftware: false,
-        receiptAmountVerification: false
+        amount_settled_in_ac: 0,
+        total_settled_amount: 0,
+        reason_less_settlement: '',
+        claim_settled_software: false,
+        receipt_verified_bank: false
       });
     }
   }, [initialData, reset]);
 
   // Auto-calculate fields
-  const approvedAmount = watch('approvedAmount');
+  const approvedAmount = watch('approved_amount');
   const tds = watch('tds');
-  const otherDeductions = watch('otherDeductions');
+  const otherDeductions = watch('other_deductions');
 
   useEffect(() => {
     if (approvedAmount && tds >= 0 && otherDeductions >= 0) {
       const totalSettled = approvedAmount - tds - otherDeductions;
       const difference = approvedAmount - totalSettled;
       
-      setValue('totalSettledAmount', totalSettled);
-      setValue('amountSettledInAccount', totalSettled);
-      setValue('differenceApprovedSettled', difference);
+      setValue('total_settled_amount', totalSettled);
+      setValue('amount_settled_in_ac', totalSettled);
+      // Note: difference_amount is calculated by backend
     }
   }, [approvedAmount, tds, otherDeductions, setValue]);
 
   const handleFormSubmit = (data: any) => {
-    const formattedData = {
-      ...data,
-      month: format(new Date(data.dateOfDischarge), 'MMMM yyyy'),
-      baseDateOfDischarge: data.dateOfDischarge,
-      differenceApprovedSettled: data.approvedAmount - data.totalSettledAmount,
-      createdAt: initialData?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Create FormData and add all form fields
+    const formData = new FormData();
     
-    onSubmit(formattedData);
+    // Add all form data - ensure all required fields are included
+    Object.keys(data).forEach(key => {
+      // Handle file fields
+      if (['approval_letter', 'physical_file_upload', 'query_on_claim'].includes(key)) {
+        if (data[key] instanceof FileList && data[key].length > 0) {
+          const file = data[key][0];
+          if (file && file.size > 0 && file.name && file.name.trim() !== '') {
+            formData.append(key, file);
+          }
+        } else if (data[key] instanceof File) {
+          if (data[key].size > 0 && data[key].name && data[key].name.trim() !== '') {
+            formData.append(key, data[key]);
+          }
+        }
+        // Skip empty file fields completely
+        return;
+      }
+      
+      // Handle non-file fields - include all fields even if empty
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, String(data[key]));
+      } else {
+        // Include empty fields with empty string
+        formData.append(key, '');
+      }
+    });
+    
+    // Ensure all required fields are present
+    const requiredFields = [
+      'date_of_admission', 'date_of_discharge', 'tpa_name', 'parent_insurance',
+      'claim_id', 'uhid_ip_no', 'patient_name', 'bill_amount', 'approved_amount',
+      'mou_discount', 'co_pay', 'consumable_deduction', 'hospital_discount',
+      'paid_by_patient', 'hospital_discount_authority', 'other_deductions',
+      'physical_file_dispatch', 'tds', 'amount_settled_in_ac', 'total_settled_amount',
+      'claim_settled_software', 'receipt_verified_bank'
+    ];
+    
+    requiredFields.forEach(field => {
+      if (!formData.has(field)) {
+        formData.append(field, data[field] || '');
+      }
+    });
+    
+    // Add calculated fields
+    formData.append('month', format(new Date(data.date_of_discharge), 'yyyy-MM'));
+    formData.append('difference_amount', String(data.approved_amount - data.total_settled_amount));
+    
+    // Handle timestamps - preserve original created_at, update updated_at
+    if (initialData?.created_at) {
+      formData.append('created_at', initialData.created_at);
+    } else {
+      formData.append('created_at', new Date().toISOString());
+    }
+    formData.append('updated_at', new Date().toISOString());
+    
+    // Add default values for optional fields if they're empty
+    if (!data.query_reply_date) {
+      formData.append('query_reply_date', '');
+    }
+    if (!data.settlement_date) {
+      formData.append('settlement_date', '');
+    }
+    if (!data.reason_less_settlement) {
+      formData.append('reason_less_settlement', '');
+    }
+    
+
+    
+    // Debug: Log what's being sent
+    console.log('FormData being sent:');
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value);
+    }
+    
+    // Pass FormData directly to onSubmit
+    onSubmit(formData as any);
     onClose();
   };
 
@@ -156,11 +228,12 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="date"
-                      {...register('dateOfAdmission')}
+                      {...register('date_of_admission')}
+                      name="date_of_admission"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.dateOfAdmission && (
-                      <p className="mt-1 text-sm text-red-600">{errors.dateOfAdmission.message}</p>
+                    {errors.date_of_admission && (
+                      <p className="mt-1 text-sm text-red-600">{errors.date_of_admission.message}</p>
                     )}
                   </div>
 
@@ -170,11 +243,12 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="date"
-                      {...register('dateOfDischarge')}
+                      {...register('date_of_discharge')}
+                      name="date_of_discharge"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.dateOfDischarge && (
-                      <p className="mt-1 text-sm text-red-600">{errors.dateOfDischarge.message}</p>
+                    {errors.date_of_discharge && (
+                      <p className="mt-1 text-sm text-red-600">{errors.date_of_discharge.message}</p>
                     )}
                   </div>
 
@@ -184,11 +258,12 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('tpaName')}
+                      {...register('tpa_name')}
+                      name="tpa_name"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.tpaName && (
-                      <p className="mt-1 text-sm text-red-600">{errors.tpaName.message}</p>
+                    {errors.tpa_name && (
+                      <p className="mt-1 text-sm text-red-600">{errors.tpa_name.message}</p>
                     )}
                   </div>
 
@@ -198,11 +273,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('parentInsurance')}
+                      {...register('parent_insurance')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.parentInsurance && (
-                      <p className="mt-1 text-sm text-red-600">{errors.parentInsurance.message}</p>
+                    {errors.parent_insurance && (
+                      <p className="mt-1 text-sm text-red-600">{errors.parent_insurance.message}</p>
                     )}
                   </div>
 
@@ -212,11 +287,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('claimId')}
+                      {...register('claim_id')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.claimId && (
-                      <p className="mt-1 text-sm text-red-600">{errors.claimId.message}</p>
+                    {errors.claim_id && (
+                      <p className="mt-1 text-sm text-red-600">{errors.claim_id.message}</p>
                     )}
                   </div>
 
@@ -226,11 +301,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('uhidIpNo')}
+                      {...register('uhid_ip_no')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.uhidIpNo && (
-                      <p className="mt-1 text-sm text-red-600">{errors.uhidIpNo.message}</p>
+                    {errors.uhid_ip_no && (
+                      <p className="mt-1 text-sm text-red-600">{errors.uhid_ip_no.message}</p>
                     )}
                   </div>
 
@@ -240,11 +315,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('patientName')}
+                      {...register('patient_name')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.patientName && (
-                      <p className="mt-1 text-sm text-red-600">{errors.patientName.message}</p>
+                    {errors.patient_name && (
+                      <p className="mt-1 text-sm text-red-600">{errors.patient_name.message}</p>
                     )}
                   </div>
                 </div>
@@ -258,11 +333,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('billAmount', { valueAsNumber: true })}
+                      {...register('bill_amount', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.billAmount && (
-                      <p className="mt-1 text-sm text-red-600">{errors.billAmount.message}</p>
+                    {errors.bill_amount && (
+                      <p className="mt-1 text-sm text-red-600">{errors.bill_amount.message}</p>
                     )}
                   </div>
 
@@ -273,11 +348,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('approvedAmount', { valueAsNumber: true })}
+                      {...register('approved_amount', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.approvedAmount && (
-                      <p className="mt-1 text-sm text-red-600">{errors.approvedAmount.message}</p>
+                    {errors.approved_amount && (
+                      <p className="mt-1 text-sm text-red-600">{errors.approved_amount.message}</p>
                     )}
                   </div>
 
@@ -288,11 +363,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('mouDiscount', { valueAsNumber: true })}
+                      {...register('mou_discount', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.mouDiscount && (
-                      <p className="mt-1 text-sm text-red-600">{errors.mouDiscount.message}</p>
+                    {errors.mou_discount && (
+                      <p className="mt-1 text-sm text-red-600">{errors.mou_discount.message}</p>
                     )}
                   </div>
 
@@ -303,11 +378,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('coPay', { valueAsNumber: true })}
+                      {...register('co_pay', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.coPay && (
-                      <p className="mt-1 text-sm text-red-600">{errors.coPay.message}</p>
+                    {errors.co_pay && (
+                      <p className="mt-1 text-sm text-red-600">{errors.co_pay.message}</p>
                     )}
                   </div>
 
@@ -318,11 +393,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('consumableDeduction', { valueAsNumber: true })}
+                      {...register('consumable_deduction', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.consumableDeduction && (
-                      <p className="mt-1 text-sm text-red-600">{errors.consumableDeduction.message}</p>
+                    {errors.consumable_deduction && (
+                      <p className="mt-1 text-sm text-red-600">{errors.consumable_deduction.message}</p>
                     )}
                   </div>
 
@@ -333,11 +408,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('hospitalDiscount', { valueAsNumber: true })}
+                      {...register('hospital_discount', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.hospitalDiscount && (
-                      <p className="mt-1 text-sm text-red-600">{errors.hospitalDiscount.message}</p>
+                    {errors.hospital_discount && (
+                      <p className="mt-1 text-sm text-red-600">{errors.hospital_discount.message}</p>
                     )}
                   </div>
 
@@ -348,11 +423,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('paidByPatient', { valueAsNumber: true })}
+                      {...register('paid_by_patient', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.paidByPatient && (
-                      <p className="mt-1 text-sm text-red-600">{errors.paidByPatient.message}</p>
+                    {errors.paid_by_patient && (
+                      <p className="mt-1 text-sm text-red-600">{errors.paid_by_patient.message}</p>
                     )}
                   </div>
 
@@ -362,11 +437,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('hospitalDiscountAuthority')}
+                      {...register('hospital_discount_authority')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.hospitalDiscountAuthority && (
-                      <p className="mt-1 text-sm text-red-600">{errors.hospitalDiscountAuthority.message}</p>
+                    {errors.hospital_discount_authority && (
+                      <p className="mt-1 text-sm text-red-600">{errors.hospital_discount_authority.message}</p>
                     )}
                   </div>
 
@@ -377,11 +452,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('otherDeductions', { valueAsNumber: true })}
+                      {...register('other_deductions', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.otherDeductions && (
-                      <p className="mt-1 text-sm text-red-600">{errors.otherDeductions.message}</p>
+                    {errors.other_deductions && (
+                      <p className="mt-1 text-sm text-red-600">{errors.other_deductions.message}</p>
                     )}
                   </div>
 
@@ -393,6 +468,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                       <input
                         type="file"
                         accept=".pdf"
+                        {...register('approval_letter')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                       <Upload className="w-5 h-5 text-gray-400" />
@@ -421,7 +497,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     <input
                       type="number"
                       step="0.01"
-                      {...register('totalSettledAmount', { valueAsNumber: true })}
+                      {...register('total_settled_amount', { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                       readOnly
                     />
@@ -435,15 +511,16 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                       Physical File Dispatch *
                     </label>
                     <select
-                      {...register('physicalFileDispatch')}
+                      {...register('physical_file_dispatch')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="pending">Pending</option>
                       <option value="dispatched">Dispatched</option>
                       <option value="received">Received</option>
+                      <option value="not_required">Not Required</option>
                     </select>
-                    {errors.physicalFileDispatch && (
-                      <p className="mt-1 text-sm text-red-600">{errors.physicalFileDispatch.message}</p>
+                    {errors.physical_file_dispatch && (
+                      <p className="mt-1 text-sm text-red-600">{errors.physical_file_dispatch.message}</p>
                     )}
                   </div>
 
@@ -453,11 +530,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="date"
-                      {...register('dateOfUploadDispatch')}
+                      {...register('query_reply_date')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.dateOfUploadDispatch && (
-                      <p className="mt-1 text-sm text-red-600">{errors.dateOfUploadDispatch.message}</p>
+                    {errors.query_reply_date && (
+                      <p className="mt-1 text-sm text-red-600">{errors.query_reply_date.message}</p>
                     )}
                   </div>
 
@@ -469,6 +546,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                       <input
                         type="file"
                         accept=".pdf"
+                        {...register('physical_file_upload')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                       <Upload className="w-5 h-5 text-gray-400" />
@@ -483,6 +561,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                       <input
                         type="file"
                         accept=".pdf"
+                        {...register('query_on_claim')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                       <Upload className="w-5 h-5 text-gray-400" />
@@ -495,11 +574,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="date"
-                      {...register('queryReplyDate')}
+                      {...register('settlement_date')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.queryReplyDate && (
-                      <p className="mt-1 text-sm text-red-600">{errors.queryReplyDate.message}</p>
+                    {errors.settlement_date && (
+                      <p className="mt-1 text-sm text-red-600">{errors.settlement_date.message}</p>
                     )}
                   </div>
 
@@ -523,11 +602,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="date"
-                      {...register('settlementDate')}
+                      {...register('settlement_date')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    {errors.settlementDate && (
-                      <p className="mt-1 text-sm text-red-600">{errors.settlementDate.message}</p>
+                    {errors.settlement_date && (
+                      <p className="mt-1 text-sm text-red-600">{errors.settlement_date.message}</p>
                     )}
                   </div>
 
@@ -537,7 +616,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     </label>
                     <input
                       type="text"
-                      {...register('reasonForLessSettlement')}
+                      {...register('reason_less_settlement')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -548,7 +627,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                   <div className="flex items-center">
                     <input
                       type="checkbox"
-                      {...register('claimSettledOnSoftware')}
+                      {...register('claim_settled_software')}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label className="ml-2 block text-sm text-gray-900">
@@ -559,7 +638,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                   <div className="flex items-center">
                     <input
                       type="checkbox"
-                      {...register('receiptAmountVerification')}
+                      {...register('receipt_verified_bank')}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label className="ml-2 block text-sm text-gray-900">

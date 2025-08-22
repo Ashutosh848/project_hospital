@@ -1,17 +1,19 @@
 import React from 'react';
-import { X, Download, FileText, Calendar, DollarSign, Building, User } from 'lucide-react';
+import { X, Download, FileText, Calendar, DollarSign, Building, User, Upload, Trash2 } from 'lucide-react';
 import { Claim } from '../../types';
 
 interface ClaimDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   claim: Claim | null;
+  onEdit?: (claim: Claim) => void;
 }
 
 export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
   isOpen,
   onClose,
-  claim
+  claim,
+  onEdit
 }) => {
   if (!isOpen || !claim) return null;
 
@@ -127,17 +129,107 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <InfoRow icon={FileText} label="Hospital Discount Authority" value={claim.hospitalDiscountAuthority} />
-                      <InfoRow icon={FileText} label="Physical File Dispatch" value={claim.physicalFileDispatch} />
-                      <InfoRow icon={Calendar} label="Date of Upload/Dispatch" value={new Date(claim.dateOfUploadDispatch).toLocaleDateString()} />
-                      <InfoRow icon={Calendar} label="Query Reply Date" value={new Date(claim.queryReplyDate).toLocaleDateString()} />
+                      <InfoRow icon={FileText} label="Hospital Discount Authority" value={claim.hospital_discount_authority || 'N/A'} />
+                      <InfoRow icon={FileText} label="Physical File Dispatch" value={claim.physical_file_dispatch} />
+                      <InfoRow icon={Calendar} label="Query Reply Date" value={claim.query_reply_date ? new Date(claim.query_reply_date).toLocaleDateString() : 'N/A'} />
+                      <InfoRow icon={Calendar} label="Settlement Date" value={claim.settlement_date ? new Date(claim.settlement_date).toLocaleDateString() : 'N/A'} />
                     </div>
                     <div className="space-y-2">
-                      <InfoRow icon={FileText} label="Reason for Less Settlement" value={claim.reasonForLessSettlement || 'N/A'} />
-                      <InfoRow icon={FileText} label="Claim Settled on Software" value={claim.claimSettledOnSoftware} />
-                      <InfoRow icon={FileText} label="Receipt Amount Verification" value={claim.receiptAmountVerification} />
+                      <InfoRow icon={FileText} label="Reason for Less Settlement" value={claim.reason_less_settlement || 'N/A'} />
+                      <InfoRow icon={FileText} label="Claim Settled on Software" value={claim.claim_settled_software} />
+                      <InfoRow icon={FileText} label="Receipt Amount Verification" value={claim.receipt_verified_bank} />
                     </div>
                   </div>
+                </div>
+
+                {/* File Management */}
+                <div className="bg-purple-50 rounded-lg p-4 md:col-span-2">
+                  <h4 className="flex items-center text-lg font-medium text-gray-900 mb-4">
+                    <FileText className="w-5 h-5 mr-2" />
+                    File Management
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Approval Letter */}
+                    <div className="bg-white rounded-lg p-3 border">
+                      <h5 className="font-medium text-gray-900 mb-2">Approval Letter</h5>
+                      {claim.approval_letter && typeof claim.approval_letter === 'string' ? (
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm text-gray-600 flex-1 truncate">
+                            {claim.approval_letter.split('/').pop()}
+                          </span>
+                          <button
+                            onClick={() => window.open(claim.approval_letter as string, '_blank')}
+                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            title="Download"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500">No file uploaded</span>
+                      )}
+                    </div>
+
+                    {/* POD Upload */}
+                    <div className="bg-white rounded-lg p-3 border">
+                      <h5 className="font-medium text-gray-900 mb-2">POD Upload</h5>
+                      {claim.physical_file_upload && typeof claim.physical_file_upload === 'string' ? (
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-green-600" />
+                          <span className="text-sm text-gray-600 flex-1 truncate">
+                            {claim.physical_file_upload.split('/').pop()}
+                          </span>
+                          <button
+                            onClick={() => window.open(claim.physical_file_upload as string, '_blank')}
+                            className="text-green-600 hover:text-green-900 transition-colors"
+                            title="Download"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500">No file uploaded</span>
+                      )}
+                    </div>
+
+                    {/* Query on Claim */}
+                    <div className="bg-white rounded-lg p-3 border">
+                      <h5 className="font-medium text-gray-900 mb-2">Query on Claim</h5>
+                      {claim.query_on_claim && typeof claim.query_on_claim === 'string' ? (
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-orange-600" />
+                          <span className="text-sm text-gray-600 flex-1 truncate">
+                            {claim.query_on_claim.split('/').pop()}
+                          </span>
+                          <button
+                            onClick={() => window.open(claim.query_on_claim as string, '_blank')}
+                            className="text-orange-600 hover:text-orange-900 transition-colors"
+                            title="Download"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500">No file uploaded</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {onEdit && (
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={() => {
+                          onEdit(claim);
+                          onClose();
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Manage Files
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
