@@ -50,6 +50,34 @@ export const claimsService = {
     return response.data;
   },
 
+  async getAllClaims(): Promise<Claim[]> {
+    let allClaims: Claim[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('page_size', '100'); // Request 100 items per page
+      
+      const response = await api.get<ClaimsResponse>(`/claims/?${params.toString()}`);
+      allClaims = [...allClaims, ...response.data.results];
+      
+      // Check if there are more pages
+      hasMore = response.data.next !== null;
+      page++;
+      
+      // Safety check to prevent infinite loops
+      if (page > 50) {
+        console.warn('Reached maximum page limit while fetching all claims');
+        break;
+      }
+    }
+    
+    console.log('Fetched all claims:', allClaims.length);
+    return allClaims;
+  },
+
   async getClaim(id: string): Promise<Claim> {
     const response = await api.get<Claim>(`/claims/${id}/`);
     return response.data;
@@ -113,6 +141,10 @@ export const claimsService = {
 
   async deleteClaim(id: string): Promise<void> {
     await api.delete(`/claims/${id}/`);
+  },
+
+  async deleteClaimFile(claimId: string, fileField: string): Promise<void> {
+    await api.delete(`/claims/${claimId}/delete-file/${fileField}/`);
   },
 
   async getDashboardStats(): Promise<DashboardStats> {

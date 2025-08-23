@@ -9,6 +9,7 @@ import { useToast } from '../hooks/useToast';
 
 export const Claims: React.FC = () => {
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [allClaims, setAllClaims] = useState<Claim[]>([]); // Store all claims for filtering
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
@@ -18,8 +19,19 @@ export const Claims: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
   
   const { showToast } = useToast();
+
+  const loadAllClaims = useCallback(async () => {
+    try {
+      const allClaimsData = await claimsService.getAllClaims();
+      setAllClaims(allClaimsData);
+    } catch (error) {
+      console.error('Failed to load all claims:', error);
+      showToast('Failed to load all claims', 'error');
+    }
+  }, [showToast]);
 
   const loadClaims = useCallback(async (page: number = 1, search?: string) => {
     try {
@@ -39,6 +51,7 @@ export const Claims: React.FC = () => {
 
   useEffect(() => {
     loadClaims();
+    loadAllClaims(); // Load all claims for filtering
   }, []);
 
   useEffect(() => {
@@ -122,16 +135,17 @@ export const Claims: React.FC = () => {
       </div>
 
       <ClaimTable
-        claims={claims}
+        claims={hasActiveFilters ? allClaims : claims}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onView={handleView}
         isLoading={isLoading}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={loadClaims}
+        currentPage={hasActiveFilters ? 1 : currentPage}
+        totalPages={hasActiveFilters ? 1 : totalPages}
+        onPageChange={hasActiveFilters ? undefined : loadClaims}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        onFilterStateChange={setHasActiveFilters}
       />
 
       <ClaimForm

@@ -4,10 +4,12 @@ from rest_framework.response import Response
 from django.db.models import Sum, Count, Q, Avg
 from django.db.models.functions import TruncMonth
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 from .models import Claim
 from claims.serializers import ClaimSerializer, ClaimListSerializer
 from authentication.permissions import IsDataEntryOrManager, IsManager
 import calendar
+import os
 
 class ClaimListCreateView(generics.ListCreateAPIView):
     queryset = Claim.objects.all()
@@ -46,6 +48,53 @@ class ClaimRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     def patch(self, request, *args, **kwargs):
         """Handle PATCH requests for partial updates"""
         return self.update(request, *args, **kwargs)
+
+@api_view(['DELETE'])
+@permission_classes([IsDataEntryOrManager])
+def delete_claim_file(request, claim_id, file_field):
+    """Delete a specific file from a claim"""
+    try:
+        claim = get_object_or_404(Claim, id=claim_id)
+        
+        # Valid file fields that can be deleted
+        valid_fields = ['approval_letter', 'physical_file_upload', 'query_on_claim', 'query_reply_upload']
+        
+        if file_field not in valid_fields:
+            return Response(
+                {'error': 'Invalid file field'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get the file field
+        file_obj = getattr(claim, file_field)
+        
+        if not file_obj:
+            return Response(
+                {'error': 'No file found for this field'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Delete the physical file from disk
+        try:
+            if file_obj.path and os.path.exists(file_obj.path):
+                os.remove(file_obj.path)
+        except Exception as e:
+            # Log the error but continue with database cleanup
+            print(f"Error deleting physical file: {e}")
+        
+        # Clear the file field in the database
+        setattr(claim, file_field, None)
+        claim.save()
+        
+        return Response({
+            'message': f'File {file_field} deleted successfully'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Error deleting file: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['GET'])
 @permission_classes([IsManager])

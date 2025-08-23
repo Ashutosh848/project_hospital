@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, Trash2, Download } from 'lucide-react';
 import { Claim, ClaimFormData } from '../../types';
 import { format } from 'date-fns';
+import { claimsService } from '../../services/claimsService';
 
 const schema = yup.object<ClaimFormData>({
   date_of_admission: yup.string().nullable().optional(),
@@ -66,6 +67,81 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     resolver: yupResolver(schema),
     defaultValues: {}
   });
+
+  const [deletedFiles, setDeletedFiles] = useState<Set<string>>(new Set());
+
+  const handleDeleteFile = async (fileField: string) => {
+    if (initialData?.id) {
+      try {
+        await claimsService.deleteClaimFile(initialData.id, fileField);
+        setDeletedFiles(prev => new Set([...prev, fileField]));
+      } catch (error) {
+        console.error('Failed to delete file:', error);
+        alert('Failed to delete file. Please try again.');
+      }
+    }
+  };
+
+  const getFileName = (fileUrl: string | File | null) => {
+    if (!fileUrl) return '';
+    if (typeof fileUrl === 'string') {
+      return fileUrl.split('/').pop() || 'File';
+    }
+    return fileUrl.name || 'File';
+  };
+
+  const renderFileField = (
+    fieldName: string,
+    label: string,
+    fileValue: string | File | null
+  ) => {
+    const hasExistingFile = fileValue && typeof fileValue === 'string' && !deletedFiles.has(fieldName);
+    
+    return (
+      <div>
+        <label className="block text-base font-semibold text-gray-900 mb-2">
+          {label}
+        </label>
+        
+        {hasExistingFile && (
+          <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Download className="w-4 h-4 text-blue-500" />
+              <span className="text-sm text-gray-700">
+                {getFileName(fileValue)}
+              </span>
+              <a
+                href={fileValue as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                View
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDeleteFile(fieldName)}
+              className="text-red-600 hover:text-red-800 p-1"
+              title="Delete file"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        
+        <div className="flex items-center space-x-2">
+          <input
+            type="file"
+            accept=".pdf"
+            {...register(fieldName as keyof ClaimFormData)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+          <Upload className="w-5 h-5 text-gray-400" />
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -486,20 +562,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Approval Letter Upload (PDF)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        {...register('approval_letter')}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                      />
-                      <Upload className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
+                  {renderFileField('approval_letter', 'Approval Letter Upload (PDF)', initialData?.approval_letter)}
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
@@ -564,35 +627,9 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      POD Upload (PDF Format)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        {...register('physical_file_upload')}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                      />
-                      <Upload className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
+                  {renderFileField('physical_file_upload', 'POD Upload (PDF Format)', initialData?.physical_file_upload)}
 
-                  <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Query on Claim (PDF Format)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        {...register('query_on_claim')}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                      />
-                      <Upload className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
+                  {renderFileField('query_on_claim', 'Query on Claim (PDF Format)', initialData?.query_on_claim)}
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
@@ -608,20 +645,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Query Reply Upload (PDF Format)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        {...register('query_reply_upload')}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                      />
-                      <Upload className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
+                  {renderFileField('query_reply_upload', 'Query Reply Upload (PDF Format)', initialData?.query_reply_upload)}
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
