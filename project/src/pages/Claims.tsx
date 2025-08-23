@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { ClaimTable } from '../components/Claims/ClaimTable';
 import { ClaimForm } from '../components/Claims/ClaimForm';
@@ -21,7 +21,7 @@ export const Claims: React.FC = () => {
   
   const { showToast } = useToast();
 
-  const loadClaims = async (page: number = 1, search?: string) => {
+  const loadClaims = useCallback(async (page: number = 1, search?: string) => {
     try {
       setIsLoading(true);
       const response = await claimsService.getClaims(page, search);
@@ -35,7 +35,7 @@ export const Claims: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     loadClaims();
@@ -50,7 +50,7 @@ export const Claims: React.FC = () => {
     } else {
       loadClaims(1);
     }
-  }, [searchTerm]);
+  }, [searchTerm, loadClaims]);
 
   const handleCreate = () => {
     setFormMode('create');

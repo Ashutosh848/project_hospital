@@ -20,21 +20,21 @@ class Claim(models.Model):
     month = models.CharField(max_length=7, editable=False)  # YYYY-MM format, auto from discharge date
     
     # Date fields
-    date_of_admission = models.DateField()
-    date_of_discharge = models.DateField()
+    date_of_admission = models.DateField(null=True, blank=True)
+    date_of_discharge = models.DateField(null=True, blank=True)
     query_reply_date = models.DateField(null=True, blank=True)
     settlement_date = models.DateField(null=True, blank=True)
     
     # Basic claim info
-    tpa_name = models.CharField(max_length=200)
-    parent_insurance = models.CharField(max_length=200)
-    claim_id = models.CharField(max_length=100, unique=True)
-    uhid_ip_no = models.CharField(max_length=100)
-    patient_name = models.CharField(max_length=200)
+    tpa_name = models.CharField(max_length=200, blank=True)
+    parent_insurance = models.CharField(max_length=200, blank=True)
+    claim_id = models.CharField(max_length=100, blank=True, null=True)
+    uhid_ip_no = models.CharField(max_length=100, blank=True)
+    patient_name = models.CharField(max_length=200, blank=True)
     
     # Financial fields
-    bill_amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
-    approved_amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    bill_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0'))])
+    approved_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0'))])
     mou_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     co_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     consumable_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
@@ -76,9 +76,13 @@ class Claim(models.Model):
         # Auto-generate month from discharge date
         if self.date_of_discharge:
             self.month = self.date_of_discharge.strftime('%Y-%m')
+        else:
+            self.month = ''  # Empty string for missing discharge date
         
-        # Calculate difference amount
-        self.difference_amount = self.approved_amount - self.total_settled_amount
+        # Calculate difference amount - handle None values
+        approved = self.approved_amount or 0
+        settled = self.total_settled_amount or 0
+        self.difference_amount = approved - settled
         
         super().save(*args, **kwargs)
     

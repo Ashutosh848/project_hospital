@@ -7,16 +7,7 @@ import {
   LogOut, 
   Menu, 
   X, 
-  ChevronRight,
-  FileText,
-  Settings,
-  Activity,
-  TrendingUp,
-  Shield,
-  Database,
-  Calendar,
-  PieChart,
-  AlertTriangle
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 

@@ -8,30 +8,11 @@ import {
   Download,
   Filter,
   Search,
-  Calendar,
   FileText,
-  Upload,
-  MoreHorizontal,
-  CheckSquare,
-  Square,
-  RefreshCw,
-  BarChart3,
-  Settings,
   Columns,
   SortAsc,
   SortDesc,
-  FilterX,
-  Save,
-  Share2,
-  Printer,
-  Mail,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Info,
-  TrendingUp,
-  TrendingDown
+  FilterX
 } from 'lucide-react';
 import { Claim } from '../../types';
 import { exportToCSV } from '../../utils/csvExport';
@@ -128,44 +109,56 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     { key: 'actions', label: 'Actions', width: 'w-24', sortable: false }
   ];
 
-  // For server-side pagination, we don't filter locally since data is already filtered by the server
-  // Local filtering is only used when onPageChange is not provided (client-side pagination)
+  // Apply local filters to claims (both server-side and client-side pagination)
   const filteredClaims = useMemo(() => {
-    if (onPageChange) {
-      // Server-side pagination: use claims as-is since they're already filtered by the server
-      return claims;
-    } else {
-      // Client-side pagination: apply local filters
-      return claims.filter(claim => {
-        const matchesSearch = !filters.search || 
-          claim.patient_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-          claim.claim_id?.toLowerCase().includes(filters.search.toLowerCase()) ||
-          claim.uhid_ip_no?.toLowerCase().includes(filters.search.toLowerCase());
-        
-        const matchesTPA = !filters.tpaName || 
-          claim.tpa_name === filters.tpaName;
-        
-        const matchesInsurance = !filters.parentInsurance || 
-          claim.parent_insurance === filters.parentInsurance;
-        
-        const matchesDateFrom = !filters.dateFrom || 
-          new Date(claim.date_of_admission) >= new Date(filters.dateFrom);
-        
-        const matchesDateTo = !filters.dateTo || 
-          new Date(claim.date_of_discharge) <= new Date(filters.dateTo);
-        
-        const matchesSettlement = !filters.settlementStatus || 
-          (filters.settlementStatus === 'settled' && claim.settlement_date) ||
-          (filters.settlementStatus === 'pending' && !claim.settlement_date);
+    console.log('Filtering claims:', { claims: claims.length, filters, searchTerm, onPageChange });
+    return claims.filter(claim => {
+      // For server-side pagination, skip search filtering since it's handled by the server
+      const currentSearchTerm = onPageChange ? '' : (onSearchChange ? searchTerm || '' : filters.search);
+      const matchesSearch = !currentSearchTerm || 
+        (claim.patient_name && claim.patient_name.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
+        (claim.claim_id && claim.claim_id.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
+        (claim.uhid_ip_no && claim.uhid_ip_no.toLowerCase().includes(currentSearchTerm.toLowerCase()));
+      
+      const matchesTPA = !filters.tpaName || 
+        claim.tpa_name === filters.tpaName;
+      
+      const matchesInsurance = !filters.parentInsurance || 
+        claim.parent_insurance === filters.parentInsurance;
+      
+      const matchesDateFrom = !filters.dateFrom || 
+        (claim.date_of_admission && new Date(claim.date_of_admission) >= new Date(filters.dateFrom));
+      
+      const matchesDateTo = !filters.dateTo || 
+        (claim.date_of_discharge && new Date(claim.date_of_discharge) <= new Date(filters.dateTo));
+      
+      const matchesSettlement = !filters.settlementStatus || 
+        (filters.settlementStatus === 'settled' && claim.settlement_date && claim.settlement_date.trim() !== '') ||
+        (filters.settlementStatus === 'pending' && (!claim.settlement_date || claim.settlement_date.trim() === ''));
 
-        const matchesFileStatus = !filters.fileStatus || 
-          claim.physical_file_dispatch === filters.fileStatus;
+      const matchesFileStatus = !filters.fileStatus || 
+        claim.physical_file_dispatch === filters.fileStatus;
 
-        return matchesSearch && matchesTPA && matchesInsurance && 
-               matchesDateFrom && matchesDateTo && matchesSettlement && matchesFileStatus;
-      });
-    }
-  }, [claims, filters, onPageChange]);
+      const matchesAmountRange = !filters.amountRange || (() => {
+        const amount = claim.approved_amount || 0;
+        switch (filters.amountRange) {
+          case '0-50000':
+            return amount >= 0 && amount <= 50000;
+          case '50000-100000':
+            return amount > 50000 && amount <= 100000;
+          case '100000-500000':
+            return amount > 100000 && amount <= 500000;
+          case '500000+':
+            return amount > 500000;
+          default:
+            return true;
+        }
+      })();
+
+      return matchesSearch && matchesTPA && matchesInsurance && 
+             matchesDateFrom && matchesDateTo && matchesSettlement && matchesFileStatus && matchesAmountRange;
+    });
+  }, [claims, filters, onPageChange, onSearchChange, searchTerm]);
 
   // Sort filtered claims
   const sortedClaims = useMemo(() => {
@@ -190,9 +183,13 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     });
   }, [filteredClaims, sortConfig]);
 
+  // Determine if we should use server-side or client-side pagination
+  const hasActiveFilters = Object.values(filters).some(v => v && v !== '');
+  const useServerPagination = onPageChange && !hasActiveFilters;
+  
   // For server-side pagination, use claims directly; for client-side, paginate locally
   const paginatedClaims = useMemo(() => {
-    if (onPageChange) {
+    if (useServerPagination) {
       // Server-side pagination: claims are already paginated by the server
       return sortedClaims;
     } else {
@@ -200,12 +197,13 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
       const startIndex = (effectiveCurrentPage - 1) * itemsPerPage;
       return sortedClaims.slice(startIndex, startIndex + itemsPerPage);
     }
-  }, [sortedClaims, effectiveCurrentPage, onPageChange]);
+  }, [sortedClaims, effectiveCurrentPage, itemsPerPage, useServerPagination]);
 
   const localTotalPages = Math.ceil(sortedClaims.length / itemsPerPage);
-  const effectiveTotalPages = onPageChange ? totalPages : localTotalPages;
+  const effectiveTotalPages = useServerPagination ? totalPages : localTotalPages;
 
   const handleFilterChange = (key: string, value: string) => {
+    console.log(`Filter changed: ${key} = ${value}`);
     setFilters(prev => ({ ...prev, [key]: value }));
     setEffectiveCurrentPage(1);
     
@@ -214,6 +212,18 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
       // For now, we'll just reset to page 1
       // In a full implementation, you'd want to pass filter parameters to the parent
       onPageChange(1);
+    }
+  };
+
+  // Handle search input changes
+  const handleSearchChange = (value: string) => {
+    console.log(`Search changed: ${value}`);
+    if (onSearchChange) {
+      // Server-side search: use the parent's search handler
+      onSearchChange(value);
+    } else {
+      // Client-side search: use local filters
+      handleFilterChange('search', value);
     }
   };
 
@@ -229,6 +239,11 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
       fileStatus: ''
     });
     setEffectiveCurrentPage(1);
+    
+    // Also clear server-side search if available
+    if (onSearchChange) {
+      onSearchChange('');
+    }
   };
 
   const handleSort = (key: string) => {
@@ -281,15 +296,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     return new Date(dateString).toLocaleDateString('en-IN');
   };
 
-  const getStatusBadge = (claim: Claim) => {
-    if (claim.settlement_date) {
-      return <span className="badge badge-success">Settled</span>;
-    } else if (claim.physical_file_dispatch === 'dispatched') {
-      return <span className="badge badge-warning">In Progress</span>;
-    } else {
-      return <span className="badge badge-danger">Pending</span>;
-    }
-  };
+
 
   const getFileStatusBadge = (status: string) => {
     switch (status) {
@@ -390,7 +397,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   return (
     <div className="space-y-6">
       {/* Main Table Card */}
-      <div className="card">
+      <div className="card relative overflow-visible">
         {/* Header with actions */}
         <div className="card-header">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -433,12 +440,18 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="btn btn-secondary"
+                className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  showFilters
+                    ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 focus:ring-blue-500 shadow-md'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:ring-blue-500 shadow-sm hover:shadow-md'
+                }`}
               >
                 <Filter className="w-4 h-4 mr-2" />
-                Filters
-                {Object.values(filters).some(v => v) && (
-                  <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                Advanced Filters
+                {(hasActiveFilters || (onSearchChange && searchTerm && searchTerm.trim() !== '')) && (
+                  <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full animate-pulse">
+                    {Object.values(filters).filter(v => v && v !== '').length + (onSearchChange && searchTerm && searchTerm.trim() !== '' ? 1 : 0)}
+                  </span>
                 )}
               </button>
               
@@ -451,157 +464,409 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Column Selector */}
-          {showColumnSelector && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Select Columns</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {columns.filter(col => col.key !== 'select' && col.key !== 'actions').map(column => (
-                  <label key={column.key} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns.has(column.key)}
-                      onChange={(e) => {
-                        const newVisible = new Set(visibleColumns);
-                        if (e.target.checked) {
-                          newVisible.add(column.key);
-                        } else {
-                          newVisible.delete(column.key);
-                        }
-                        setVisibleColumns(newVisible);
-                      }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{column.label}</span>
-                  </label>
-                ))}
-              </div>
+        {/* Column Selector Section */}
+        {showColumnSelector && (
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Select Columns</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {columns.filter(col => col.key !== 'select' && col.key !== 'actions').map(column => (
+                <label key={column.key} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns.has(column.key)}
+                    onChange={(e) => {
+                      const newVisible = new Set(visibleColumns);
+                      if (e.target.checked) {
+                        newVisible.add(column.key);
+                      } else {
+                        newVisible.delete(column.key);
+                      }
+                      setVisibleColumns(newVisible);
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{column.label}</span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Filters */}
-          {showFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-900">Filters</h3>
-                <button
-                  onClick={clearFilters}
-                  className="btn btn-ghost"
-                >
-                  <FilterX className="w-4 h-4 mr-2" />
-                  Clear All
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="form-label">Search</label>
-                  <div className="search-input">
-                    <Search className="search-input-icon" />
-                    <input
-                      type="text"
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                      placeholder="Patient name, Claim ID, UHID..."
-                      className="form-input"
-                    />
+        {/* Enterprise-Level Filters Section */}
+        {showFilters && (
+          <div className="w-full bg-white border-b border-gray-200 relative z-10 filter-section">
+            {/* Filter Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
+                    <Filter className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+                    <p className="text-sm text-gray-600">Refine your search with precision filters</p>
                   </div>
                 </div>
-                
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={clearFilters}
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  >
+                    <FilterX className="w-4 h-4 mr-2" />
+                    Clear All
+                  </button>
+                  <div className="text-sm text-gray-500">
+                    {Object.values(filters).filter(v => v && v !== '').length + (onSearchChange && searchTerm && searchTerm.trim() !== '' ? 1 : 0)} active
+                  </div>
+                </div>
+              </div>
+              
+              {/* Active Filter Pills */}
+              {(hasActiveFilters || (onSearchChange && searchTerm && searchTerm.trim() !== '')) && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {onSearchChange && searchTerm && searchTerm.trim() !== '' && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                      Search: "{searchTerm}"
+                      <button
+                        onClick={() => onSearchChange('')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {filters.search && !onSearchChange && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                      Search: "{filters.search}"
+                      <button
+                        onClick={() => handleFilterChange('search', '')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {filters.tpaName && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                      TPA: {filters.tpaName}
+                      <button
+                        onClick={() => handleFilterChange('tpaName', '')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-green-600 hover:text-green-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {filters.parentInsurance && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                      Insurance: {filters.parentInsurance}
+                      <button
+                        onClick={() => handleFilterChange('parentInsurance', '')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-purple-600 hover:text-purple-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {filters.settlementStatus && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                      Status: {filters.settlementStatus === 'settled' ? 'Settled' : 'Pending'}
+                      <button
+                        onClick={() => handleFilterChange('settlementStatus', '')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-orange-600 hover:text-orange-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {filters.fileStatus && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                      File: {filters.fileStatus}
+                      <button
+                        onClick={() => handleFilterChange('fileStatus', '')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-indigo-600 hover:text-indigo-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {filters.amountRange && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 border border-teal-200">
+                      Amount: {filters.amountRange === '0-50000' ? '₹0 - ₹50K' : 
+                               filters.amountRange === '50000-100000' ? '₹50K - ₹1L' :
+                               filters.amountRange === '100000-500000' ? '₹1L - ₹5L' : '₹5L+'}
+                      <button
+                        onClick={() => handleFilterChange('amountRange', '')}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-teal-600 hover:text-teal-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {(filters.dateFrom || filters.dateTo) && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-800 border border-rose-200">
+                      Date: {filters.dateFrom || '...'} to {filters.dateTo || '...'}
+                      <button
+                        onClick={() => {
+                          handleFilterChange('dateFrom', '');
+                          handleFilterChange('dateTo', '');
+                        }}
+                        className="ml-2 inline-flex items-center justify-center w-4 h-4 text-rose-600 hover:text-rose-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Filter Controls */}
+            <div className="p-6">
+              {/* Primary Search */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-900 mb-3">Global Search</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={onSearchChange ? searchTerm || '' : filters.search}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Search by patient name, claim ID, UHID, or any keyword..."
+                    className="block w-full pl-11 pr-4 py-3 text-sm border border-gray-300 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-500"
+                  />
+                  {(onSearchChange ? searchTerm : filters.search) && (
+                    <button
+                      onClick={() => onSearchChange ? onSearchChange('') : handleFilterChange('search', '')}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      <FilterX className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Filter Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 filter-grid" style={{ position: 'relative', zIndex: 1 }}>
+                {/* TPA Name Filter */}
                 <div>
-                  <label className="form-label">TPA Name</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">TPA Provider</label>
                   <select
                     value={filters.tpaName}
                     onChange={(e) => handleFilterChange('tpaName', e.target.value)}
-                    className="form-select"
+                    className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 cursor-pointer hover:border-gray-400"
+                    style={{ position: 'relative', zIndex: 9999 }}
                   >
-                    <option value="">All TPAs</option>
+                    <option value="">All TPA Providers</option>
                     {uniqueTpaNames.map(tpa => (
                       <option key={tpa} value={tpa}>{tpa}</option>
                     ))}
                   </select>
+                  {filters.tpaName && (
+                    <div className="mt-1 text-xs text-green-600 font-medium">
+                      ✓ {uniqueTpaNames.length > 0 ? `1 of ${uniqueTpaNames.length} selected` : 'Selected'}
+                    </div>
+                  )}
                 </div>
 
+                {/* Parent Insurance Filter */}
                 <div>
-                  <label className="form-label">Parent Insurance</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Insurance Company</label>
                   <select
                     value={filters.parentInsurance}
                     onChange={(e) => handleFilterChange('parentInsurance', e.target.value)}
-                    className="form-select"
+                    className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 cursor-pointer hover:border-gray-400"
+                    style={{ position: 'relative', zIndex: 9999 }}
                   >
                     <option value="">All Insurance Companies</option>
                     {uniqueInsuranceCompanies.map(company => (
                       <option key={company} value={company}>{company}</option>
                     ))}
                   </select>
+                  {filters.parentInsurance && (
+                    <div className="mt-1 text-xs text-purple-600 font-medium">
+                      ✓ {uniqueInsuranceCompanies.length > 0 ? `1 of ${uniqueInsuranceCompanies.length} selected` : 'Selected'}
+                    </div>
+                  )}
                 </div>
 
+                {/* Settlement Status Filter */}
                 <div>
-                  <label className="form-label">Settlement Status</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Settlement Status</label>
                   <select
                     value={filters.settlementStatus}
                     onChange={(e) => handleFilterChange('settlementStatus', e.target.value)}
-                    className="form-select"
+                    className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 cursor-pointer hover:border-gray-400"
+                    style={{ position: 'relative', zIndex: 9999 }}
                   >
-                    <option value="">All</option>
-                    <option value="settled">Settled</option>
-                    <option value="pending">Pending</option>
+                    <option value="">All Statuses</option>
+                    <option value="settled">✅ Settled</option>
+                    <option value="pending">⏳ Pending</option>
                   </select>
+                  {filters.settlementStatus && (
+                    <div className="mt-1 text-xs text-orange-600 font-medium">
+                      ✓ {filters.settlementStatus === 'settled' ? 'Settled claims only' : 'Pending claims only'}
+                    </div>
+                  )}
                 </div>
 
+                {/* File Status Filter */}
                 <div>
-                  <label className="form-label">Date From</label>
-                  <input
-                    type="date"
-                    value={filters.dateFrom}
-                    onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Date To</label>
-                  <input
-                    type="date"
-                    value={filters.dateTo}
-                    onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">File Status</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Document Status</label>
                   <select
                     value={filters.fileStatus}
                     onChange={(e) => handleFilterChange('fileStatus', e.target.value)}
-                    className="form-select"
+                    className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 cursor-pointer hover:border-gray-400"
+                    style={{ position: 'relative', zIndex: 9999 }}
                   >
-                    <option value="">All</option>
-                    <option value="pending">Pending</option>
-                    <option value="dispatched">Dispatched</option>
-                    <option value="received">Received</option>
+                    <option value="">All Document Statuses</option>
+                    <option value="pending">📋 Pending</option>
+                    <option value="dispatched">📤 Dispatched</option>
+                    <option value="received">📥 Received</option>
+                    <option value="not_required">🚫 Not Required</option>
                   </select>
+                  {filters.fileStatus && (
+                    <div className="mt-1 text-xs text-indigo-600 font-medium">
+                      ✓ {filters.fileStatus.charAt(0).toUpperCase() + filters.fileStatus.slice(1)} documents
+                    </div>
+                  )}
                 </div>
 
+                {/* Amount Range Filter */}
                 <div>
-                  <label className="form-label">Amount Range</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Claim Amount Range</label>
                   <select
                     value={filters.amountRange}
                     onChange={(e) => handleFilterChange('amountRange', e.target.value)}
-                    className="form-select"
+                    className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 cursor-pointer hover:border-gray-400"
+                    style={{ position: 'relative', zIndex: 9999 }}
                   >
-                    <option value="">All</option>
-                    <option value="0-50000">₹0 - ₹50,000</option>
-                    <option value="50000-100000">₹50,000 - ₹1,00,000</option>
-                    <option value="100000-500000">₹1,00,000 - ₹5,00,000</option>
-                    <option value="500000+">₹5,00,000+</option>
+                    <option value="">All Amount Ranges</option>
+                    <option value="0-50000">💰 ₹0 - ₹50,000</option>
+                    <option value="50000-100000">💰💰 ₹50,000 - ₹1,00,000</option>
+                    <option value="100000-500000">💰💰💰 ₹1,00,000 - ₹5,00,000</option>
+                    <option value="500000+">💎 ₹5,00,000+</option>
                   </select>
+                  {filters.amountRange && (
+                    <div className="mt-1 text-xs text-teal-600 font-medium">
+                      ✓ {filters.amountRange === '0-50000' ? 'Small claims' : 
+                         filters.amountRange === '50000-100000' ? 'Medium claims' :
+                         filters.amountRange === '100000-500000' ? 'Large claims' : 'Premium claims'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Date Range - From */}
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Date From</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={filters.dateFrom}
+                      onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                      className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                  {filters.dateFrom && (
+                    <div className="mt-1 text-xs text-rose-600 font-medium">
+                      ✓ From {new Date(filters.dateFrom).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Date Range - To */}
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Date To</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={filters.dateTo}
+                      onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                      className="block w-full px-4 py-3 text-sm border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                  {filters.dateTo && (
+                    <div className="mt-1 text-xs text-rose-600 font-medium">
+                      ✓ Until {new Date(filters.dateTo).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Filter Presets */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <label className="block text-sm font-semibold text-gray-900 mb-3">Quick Filters</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      handleFilterChange('settlementStatus', 'pending');
+                      handleFilterChange('dateFrom', '');
+                      handleFilterChange('dateTo', '');
+                    }}
+                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 focus:ring-2 focus:ring-orange-500 transition-all duration-200"
+                  >
+                    ⏳ Pending Claims
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleFilterChange('settlementStatus', 'settled');
+                      const lastWeek = new Date();
+                      lastWeek.setDate(lastWeek.getDate() - 7);
+                      handleFilterChange('dateFrom', lastWeek.toISOString().split('T')[0]);
+                      handleFilterChange('dateTo', new Date().toISOString().split('T')[0]);
+                    }}
+                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 focus:ring-2 focus:ring-green-500 transition-all duration-200"
+                  >
+                    📅 Recently Settled
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleFilterChange('amountRange', '500000+');
+                      handleFilterChange('settlementStatus', '');
+                    }}
+                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:ring-2 focus:ring-purple-500 transition-all duration-200"
+                  >
+                    💎 High Value Claims
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleFilterChange('fileStatus', 'pending');
+                      handleFilterChange('settlementStatus', 'pending');
+                    }}
+                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 focus:ring-2 focus:ring-red-500 transition-all duration-200"
+                  >
+                    🚨 Requires Action
+                  </button>
+                  <button
+                    onClick={() => {
+                      const thisMonth = new Date();
+                      const firstDay = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1);
+                      handleFilterChange('dateFrom', firstDay.toISOString().split('T')[0]);
+                      handleFilterChange('dateTo', thisMonth.toISOString().split('T')[0]);
+                    }}
+                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                  >
+                    📊 This Month
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -813,7 +1078,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
         {effectiveTotalPages > 1 && (
           <div className="pagination">
             <div className="text-sm text-gray-700">
-              {onPageChange ? (
+              {useServerPagination ? (
                 // Server-side pagination: show current page info
                 `Showing ${paginatedClaims.length} claims on page ${effectiveCurrentPage} of ${effectiveTotalPages}`
               ) : (

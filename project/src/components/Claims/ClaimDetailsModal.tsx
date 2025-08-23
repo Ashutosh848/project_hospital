@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, FileText, Calendar, DollarSign, Building, User, Upload, Trash2 } from 'lucide-react';
+import { X, Download, FileText, Calendar, DollarSign, Building, User, Upload } from 'lucide-react';
 import { Claim } from '../../types';
 
 interface ClaimDetailsModalProps {
@@ -17,24 +17,35 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
 }) => {
   if (!isOpen || !claim) return null;
 
-  const InfoRow: React.FC<{ icon: React.ElementType; label: string; value: string | number | boolean; isAmount?: boolean }> = ({
+  const InfoRow: React.FC<{ icon: React.ElementType; label: string; value: string | number | boolean | null | undefined; isAmount?: boolean }> = ({
     icon: Icon,
     label,
     value,
     isAmount = false
-  }) => (
-    <div className="flex items-center space-x-3 py-2 border-b border-gray-100 last:border-b-0">
-      <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-      <div className="flex-1">
-        <span className="text-sm font-medium text-gray-700">{label}:</span>
-        <span className="ml-2 text-sm text-gray-900">
-          {isAmount && typeof value === 'number' ? `₹${value.toLocaleString()}` : 
-           typeof value === 'boolean' ? (value ? 'Yes' : 'No') : 
-           value}
-        </span>
+  }) => {
+    const formatValue = () => {
+      if (value === null || value === undefined || value === '') {
+        return 'N/A';
+      }
+      if (isAmount && typeof value === 'number') {
+        return value.toLocaleString();
+      }
+      if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No';
+      }
+      return value;
+    };
+
+    return (
+      <div className="flex items-center space-x-3 py-2 border-b border-gray-100 last:border-b-0">
+        <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+        <div className="flex-1">
+          <span className="text-sm font-medium text-gray-700">{label}:</span>
+          <span className="ml-2 text-sm text-gray-900">{formatValue()}</span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -47,7 +58,7 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Claim Details</h3>
-                <p className="text-sm text-gray-600">Claim ID: {claim.claimId}</p>
+                <p className="text-sm text-gray-600">Claim ID: {claim.claim_id}</p>
               </div>
               <button
                 onClick={onClose}
@@ -67,10 +78,10 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                     Patient Information
                   </h4>
                   <div className="space-y-2">
-                    <InfoRow icon={User} label="Patient Name" value={claim.patientName} />
-                    <InfoRow icon={FileText} label="UHID/IP No" value={claim.uhidIpNo} />
-                    <InfoRow icon={Calendar} label="Date of Admission" value={new Date(claim.dateOfAdmission).toLocaleDateString()} />
-                    <InfoRow icon={Calendar} label="Date of Discharge" value={new Date(claim.dateOfDischarge).toLocaleDateString()} />
+                    <InfoRow icon={User} label="Patient Name" value={claim.patient_name} />
+                    <InfoRow icon={FileText} label="UHID/IP No" value={claim.uhid_ip_no} />
+                    <InfoRow icon={Calendar} label="Date of Admission" value={claim.date_of_admission ? new Date(claim.date_of_admission).toLocaleDateString() : 'N/A'} />
+                    <InfoRow icon={Calendar} label="Date of Discharge" value={claim.date_of_discharge ? new Date(claim.date_of_discharge).toLocaleDateString() : 'N/A'} />
                   </div>
                 </div>
 
@@ -81,9 +92,9 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                     Insurance Information
                   </h4>
                   <div className="space-y-2">
-                    <InfoRow icon={Building} label="TPA Name" value={claim.tpaName} />
-                    <InfoRow icon={Building} label="Parent Insurance" value={claim.parentInsurance} />
-                    <InfoRow icon={FileText} label="Claim ID" value={claim.claimId} />
+                    <InfoRow icon={Building} label="TPA Name" value={claim.tpa_name} />
+                    <InfoRow icon={Building} label="Parent Insurance" value={claim.parent_insurance} />
+                    <InfoRow icon={FileText} label="Claim ID" value={claim.claim_id} />
                     <InfoRow icon={Calendar} label="Month" value={claim.month} />
                   </div>
                 </div>
@@ -95,13 +106,13 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                     Financial Details
                   </h4>
                   <div className="space-y-2">
-                    <InfoRow icon={DollarSign} label="Bill Amount" value={claim.billAmount} isAmount />
-                    <InfoRow icon={DollarSign} label="Approved Amount" value={claim.approvedAmount} isAmount />
-                    <InfoRow icon={DollarSign} label="MOU Discount" value={claim.mouDiscount} isAmount />
-                    <InfoRow icon={DollarSign} label="Co-pay" value={claim.coPay} isAmount />
-                    <InfoRow icon={DollarSign} label="Consumable Deduction" value={claim.consumableDeduction} isAmount />
-                    <InfoRow icon={DollarSign} label="Hospital Discount" value={claim.hospitalDiscount} isAmount />
-                    <InfoRow icon={DollarSign} label="Paid by Patient" value={claim.paidByPatient} isAmount />
+                    <InfoRow icon={DollarSign} label="Bill Amount" value={claim.bill_amount} isAmount />
+                    <InfoRow icon={DollarSign} label="Approved Amount" value={claim.approved_amount} isAmount />
+                    <InfoRow icon={DollarSign} label="MOU Discount" value={claim.mou_discount} isAmount />
+                    <InfoRow icon={DollarSign} label="Co-pay" value={claim.co_pay} isAmount />
+                    <InfoRow icon={DollarSign} label="Consumable Deduction" value={claim.consumable_deduction} isAmount />
+                    <InfoRow icon={DollarSign} label="Hospital Discount" value={claim.hospital_discount} isAmount />
+                    <InfoRow icon={DollarSign} label="Paid by Patient" value={claim.paid_by_patient} isAmount />
                   </div>
                 </div>
 
@@ -113,11 +124,11 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                   </h4>
                   <div className="space-y-2">
                     <InfoRow icon={DollarSign} label="TDS" value={claim.tds} isAmount />
-                    <InfoRow icon={DollarSign} label="Other Deductions" value={claim.otherDeductions} isAmount />
-                    <InfoRow icon={DollarSign} label="Amount Settled in A/C" value={claim.amountSettledInAccount} isAmount />
-                    <InfoRow icon={DollarSign} label="Total Settled Amount" value={claim.totalSettledAmount} isAmount />
-                    <InfoRow icon={DollarSign} label="Difference (Approved vs Settled)" value={claim.differenceApprovedSettled} isAmount />
-                    <InfoRow icon={Calendar} label="Settlement Date" value={new Date(claim.settlementDate).toLocaleDateString()} />
+                    <InfoRow icon={DollarSign} label="Other Deductions" value={claim.other_deductions} isAmount />
+                    <InfoRow icon={DollarSign} label="Amount Settled in A/C" value={claim.amount_settled_in_ac} isAmount />
+                    <InfoRow icon={DollarSign} label="Total Settled Amount" value={claim.total_settled_amount} isAmount />
+                    <InfoRow icon={DollarSign} label="Difference (Approved vs Settled)" value={claim.difference_amount} isAmount />
+                    <InfoRow icon={Calendar} label="Settlement Date" value={claim.settlement_date && claim.settlement_date.trim() !== '' ? new Date(claim.settlement_date).toLocaleDateString() : 'N/A'} />
                   </div>
                 </div>
 
@@ -132,7 +143,7 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                       <InfoRow icon={FileText} label="Hospital Discount Authority" value={claim.hospital_discount_authority || 'N/A'} />
                       <InfoRow icon={FileText} label="Physical File Dispatch" value={claim.physical_file_dispatch} />
                       <InfoRow icon={Calendar} label="Query Reply Date" value={claim.query_reply_date ? new Date(claim.query_reply_date).toLocaleDateString() : 'N/A'} />
-                      <InfoRow icon={Calendar} label="Settlement Date" value={claim.settlement_date ? new Date(claim.settlement_date).toLocaleDateString() : 'N/A'} />
+                      <InfoRow icon={Calendar} label="Settlement Date" value={claim.settlement_date && claim.settlement_date.trim() !== '' ? new Date(claim.settlement_date).toLocaleDateString() : 'N/A'} />
                     </div>
                     <div className="space-y-2">
                       <InfoRow icon={FileText} label="Reason for Less Settlement" value={claim.reason_less_settlement || 'N/A'} />
