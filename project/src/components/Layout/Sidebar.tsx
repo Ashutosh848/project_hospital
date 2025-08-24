@@ -5,7 +5,6 @@ import {
   BarChart3, 
   Users, 
   LogOut, 
-  Menu, 
   X, 
   ChevronRight
 } from 'lucide-react';

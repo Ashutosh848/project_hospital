@@ -213,7 +213,6 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
   useEffect(() => {
     if (approvedAmount && tds !== undefined && otherDeductions !== undefined) {
       const totalSettled = approvedAmount - (tds || 0) - (otherDeductions || 0);
-      const difference = approvedAmount - totalSettled;
       
       setValue('total_settled_amount', totalSettled);
       setValue('amount_settled_in_ac', totalSettled);
@@ -292,7 +291,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     
     // Debug: Log what's being sent
     console.log('FormData being sent:');
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       console.log(key, value);
     }
     

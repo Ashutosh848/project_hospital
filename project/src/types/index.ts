@@ -30,6 +30,7 @@ export interface Claim {
   physical_file_dispatch: 'pending' | 'dispatched' | 'received' | 'not_required';
   physical_file_upload?: File | string;
   query_on_claim?: File | string;
+  query_reply_upload?: File | string;
   query_reply_date: string;
   settlement_date: string;
   tds: number;

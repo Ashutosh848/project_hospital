@@ -1,0 +1,100 @@
+[
+  {
+    "test": "Server Connection",
+    "success": true,
+    "timestamp": "2025-08-24T17:49:50.365640",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Login GET (should fail)",
+    "success": true,
+    "timestamp": "2025-08-24T17:49:50.408779",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Login POST (no credentials)",
+    "success": true,
+    "timestamp": "2025-08-24T17:49:50.453073",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "User Creation",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:50.498225",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Login with Credentials",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.482929",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "User List",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.530265",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Claims List",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.576221",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Claim Creation",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.585257",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Dashboard Summary",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.640185",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Dashboard Monthwise",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.700031",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Dashboard Companywise",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.748823",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Invalid Claim ID",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.793941",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Invalid User ID",
+    "success": false,
+    "timestamp": "2025-08-24T17:49:51.842011",
+    "status_code": null,
+    "error": null
+  },
+  {
+    "test": "Unauthorized Access",
+    "success": true,
+    "timestamp": "2025-08-24T17:49:51.887333",
+    "status_code": null,
+    "error": null
+  }
+]

@@ -6,7 +6,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Download,
-  Search,
   FileText,
   Columns,
   Filter,
@@ -55,7 +54,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
     'month', 'date_of_admission', 'date_of_discharge', 'tpa_name', 'claim_id', 
-    'patient_name', 'bill_amount', 'approved_amount', 'files', 'actions'
+    'patient_name', 'bill_amount', 'approved_amount', 'settlement_status', 'files', 'actions'
   ]));
 
   // Filter state
@@ -65,7 +64,11 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     tpaName: '',
     parentInsurance: '',
     settlementStatus: '',
-    fileStatus: ''
+    fileStatus: '',
+    admissionDateFrom: '',
+    admissionDateTo: '',
+    dischargeDateFrom: '',
+    dischargeDateTo: ''
   });
 
   // Applied filters state (what's actually being used for filtering)
@@ -75,10 +78,28 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     tpaName: '',
     parentInsurance: '',
     settlementStatus: '',
-    fileStatus: ''
+    fileStatus: '',
+    admissionDateFrom: '',
+    admissionDateTo: '',
+    dischargeDateFrom: '',
+    dischargeDateTo: ''
   });
 
+  // Filter input states for text inputs with suggestions
+  const [settlementStatusInput, setSettlementStatusInput] = useState('');
+  const [fileStatusInput, setFileStatusInput] = useState('');
+  const [showSettlementSuggestion, setShowSettlementSuggestion] = useState(false);
+  const [showFileStatusSuggestion, setShowFileStatusSuggestion] = useState(false);
+
   const itemsPerPage = 20;
+
+  // Initialize filter inputs when component mounts
+  useEffect(() => {
+    setSettlementStatusInput(filters.settlementStatus);
+    setFileStatusInput(filters.fileStatus);
+  }, []); // Only run once on mount
+
+
 
 
 
@@ -105,6 +126,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     { key: 'physical_file_dispatch', label: 'File Status', width: 'w-32', sortable: true },
     { key: 'date_of_upload_dispatch', label: 'Upload/Dispatch Date', width: 'w-40', sortable: true },
     { key: 'query_reply_date', label: 'Query Reply Date', width: 'w-36', sortable: true },
+    { key: 'settlement_status', label: 'Settlement Status', width: 'w-32', sortable: true },
     { key: 'settlement_date', label: 'Settlement Date', width: 'w-36', sortable: true },
     { key: 'tds', label: 'TDS', width: 'w-24', sortable: true },
     { key: 'amount_settled_in_ac', label: 'Amount Settled in A/C', width: 'w-44', sortable: true },
@@ -177,6 +199,42 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
       filtered = filtered.filter(claim => claim.physical_file_dispatch === appliedFilters.fileStatus);
     }
 
+    // Apply admission date range filter
+    if (appliedFilters.admissionDateFrom || appliedFilters.admissionDateTo) {
+      filtered = filtered.filter(claim => {
+        if (!claim.date_of_admission) return false;
+        
+        const admissionDate = new Date(claim.date_of_admission);
+        if (isNaN(admissionDate.getTime())) return false;
+        
+        const fromDate = appliedFilters.admissionDateFrom ? new Date(appliedFilters.admissionDateFrom) : null;
+        const toDate = appliedFilters.admissionDateTo ? new Date(appliedFilters.admissionDateTo) : null;
+        
+        if (fromDate && admissionDate < fromDate) return false;
+        if (toDate && admissionDate > toDate) return false;
+        
+        return true;
+      });
+    }
+
+    // Apply discharge date range filter
+    if (appliedFilters.dischargeDateFrom || appliedFilters.dischargeDateTo) {
+      filtered = filtered.filter(claim => {
+        if (!claim.date_of_discharge) return false;
+        
+        const dischargeDate = new Date(claim.date_of_discharge);
+        if (isNaN(dischargeDate.getTime())) return false;
+        
+        const fromDate = appliedFilters.dischargeDateFrom ? new Date(appliedFilters.dischargeDateFrom) : null;
+        const toDate = appliedFilters.dischargeDateTo ? new Date(appliedFilters.dischargeDateTo) : null;
+        
+        if (fromDate && dischargeDate < fromDate) return false;
+        if (toDate && dischargeDate > toDate) return false;
+        
+        return true;
+      });
+    }
+
     return filtered;
   }, [claims, searchTerm, onSearchChange, appliedFilters]);
 
@@ -238,6 +296,26 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleSettlementStatusChange = (value: string) => {
+    setSettlementStatusInput(value);
+    setFilters(prev => ({ ...prev, settlementStatus: value }));
+    
+    // Show suggestion if input doesn't match valid options
+    const validOptions = ['settled', 'pending'];
+    const normalizedValue = value.toLowerCase().trim();
+    setShowSettlementSuggestion(value.length > 0 && !validOptions.includes(normalizedValue));
+  };
+
+  const handleFileStatusChange = (value: string) => {
+    setFileStatusInput(value);
+    setFilters(prev => ({ ...prev, fileStatus: value }));
+    
+    // Show suggestion if input doesn't match valid options
+    const validOptions = ['pending', 'dispatched', 'received', 'not_required'];
+    const normalizedValue = value.toLowerCase().trim();
+    setShowFileStatusSuggestion(value.length > 0 && !validOptions.includes(normalizedValue));
+  };
+
   const applyFilters = () => {
     setAppliedFilters(filters);
     setEffectiveCurrentPage(1);
@@ -250,10 +328,18 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
       tpaName: '',
       parentInsurance: '',
       settlementStatus: '',
-      fileStatus: ''
+      fileStatus: '',
+      admissionDateFrom: '',
+      admissionDateTo: '',
+      dischargeDateFrom: '',
+      dischargeDateTo: ''
     };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
+    setSettlementStatusInput('');
+    setFileStatusInput('');
+    setShowSettlementSuggestion(false);
+    setShowFileStatusSuggestion(false);
     setEffectiveCurrentPage(1);
   };
 
@@ -304,7 +390,19 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN');
+    // Handle empty, null, or invalid date strings
+    if (!dateString || dateString.trim() === '' || dateString === 'null' || dateString === 'undefined') {
+      return 'N/A';
+    }
+    
+    const date = new Date(dateString);
+    
+    // Check if the date is valid (not Invalid Date)
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
+    
+    return date.toLocaleDateString('en-IN');
   };
 
   const getFileStatusBadge = (status: string) => {
@@ -324,6 +422,19 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     return verified ? 
       <span className="badge badge-success">Verified</span> : 
       <span className="badge badge-warning">Pending</span>;
+  };
+
+  const getSettlementStatusBadge = (settlementDate: string) => {
+    if (!settlementDate || settlementDate.trim() === '' || settlementDate === 'null' || settlementDate === 'undefined') {
+      return <span className="badge badge-warning">Pending</span>;
+    }
+    
+    const date = new Date(settlementDate);
+    if (isNaN(date.getTime())) {
+      return <span className="badge badge-warning">Pending</span>;
+    }
+    
+    return <span className="badge badge-success">Settled</span>;
   };
 
   const getFileBadge = (fileUrl: string | null, fileName: string) => {
@@ -554,31 +665,123 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               {/* Settlement Status Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Settlement Status</label>
-                <select
-                  value={filters.settlementStatus}
-                  onChange={(e) => handleFilterChange('settlementStatus', e.target.value)}
+                <input
+                  type="text"
+                  value={settlementStatusInput}
+                  onChange={(e) => handleSettlementStatusChange(e.target.value)}
+                  placeholder="Enter status (settled or pending)"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="settled">Settled</option>
-                  <option value="pending">Pending</option>
-                </select>
+                />
+                {showSettlementSuggestion && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800 font-medium mb-1">Suggested statuses:</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSettlementStatusChange('settled')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        settled
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSettlementStatusChange('pending')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        pending
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* File Status Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">File Status</label>
-                <select
-                  value={filters.fileStatus}
-                  onChange={(e) => handleFilterChange('fileStatus', e.target.value)}
+                <input
+                  type="text"
+                  value={fileStatusInput}
+                  onChange={(e) => handleFileStatusChange(e.target.value)}
+                  placeholder="Enter file status (pending, dispatched, received, not_required)"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All File Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="dispatched">Dispatched</option>
-                  <option value="received">Received</option>
-                  <option value="not_required">Not Required</option>
-                </select>
+                />
+                {showFileStatusSuggestion && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800 font-medium mb-1">Suggested file statuses:</p>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('pending')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        pending
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('dispatched')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        dispatched
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('received')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        received
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('not_required')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        not_required
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Admission Date Range Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Date From</label>
+                <input
+                  type="date"
+                  value={filters.admissionDateFrom}
+                  onChange={(e) => handleFilterChange('admissionDateFrom', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Date To</label>
+                <input
+                  type="date"
+                  value={filters.admissionDateTo}
+                  onChange={(e) => handleFilterChange('admissionDateTo', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Discharge Date Range Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Discharge Date From</label>
+                <input
+                  type="date"
+                  value={filters.dischargeDateFrom}
+                  onChange={(e) => handleFilterChange('dischargeDateFrom', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Discharge Date To</label>
+                <input
+                  type="date"
+                  value={filters.dischargeDateTo}
+                  onChange={(e) => handleFilterChange('dischargeDateTo', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
               </div>
 
@@ -669,6 +872,62 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                     </button>
                   </span>
                 )}
+                {appliedFilters.admissionDateFrom && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-800">
+                    Admission From: {appliedFilters.admissionDateFrom}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('admissionDateFrom', '');
+                        setAppliedFilters(prev => ({ ...prev, admissionDateFrom: '' }));
+                      }}
+                      className="ml-1 text-teal-600 hover:text-teal-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.admissionDateTo && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-800">
+                    Admission To: {appliedFilters.admissionDateTo}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('admissionDateTo', '');
+                        setAppliedFilters(prev => ({ ...prev, admissionDateTo: '' }));
+                      }}
+                      className="ml-1 text-teal-600 hover:text-teal-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.dischargeDateFrom && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-cyan-100 text-cyan-800">
+                    Discharge From: {appliedFilters.dischargeDateFrom}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('dischargeDateFrom', '');
+                        setAppliedFilters(prev => ({ ...prev, dischargeDateFrom: '' }));
+                      }}
+                      className="ml-1 text-cyan-600 hover:text-cyan-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.dischargeDateTo && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-cyan-100 text-cyan-800">
+                    Discharge To: {appliedFilters.dischargeDateTo}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('dischargeDateTo', '');
+                        setAppliedFilters(prev => ({ ...prev, dischargeDateTo: '' }));
+                      }}
+                      className="ml-1 text-cyan-600 hover:text-cyan-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -725,7 +984,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                     onClick={() => column.sortable && handleSort(column.key)}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>{column.label}</span>
+                      <span className="font-bold text-black">{column.label}</span>
                       {column.sortable && sortConfig?.key === column.key && (
                         sortConfig.direction === 'asc' ? 
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -828,6 +1087,10 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                   
                   {visibleColumns.has('query_reply_date') && (
                     <td className="table-cell">{formatDate(claim.query_reply_date)}</td>
+                  )}
+                  
+                  {visibleColumns.has('settlement_status') && (
+                    <td className="table-cell">{getSettlementStatusBadge(claim.settlement_date)}</td>
                   )}
                   
                   {visibleColumns.has('settlement_date') && (
