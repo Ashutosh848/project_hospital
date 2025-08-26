@@ -43,8 +43,8 @@ class Claim(models.Model):
     hospital_discount_authority = models.CharField(max_length=200, blank=True)
     other_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     tds = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    amount_settled_in_ac = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    total_settled_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    amount_settled_in_ac = models.DecimalField(max_digits=15, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    total_settled_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     difference_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)  # calculated field
     reason_less_settlement = models.TextField(blank=True)
     
@@ -53,6 +53,7 @@ class Claim(models.Model):
     physical_file_dispatch = models.CharField(max_length=20, choices=PHYSICAL_FILE_DISPATCH_CHOICES, default='pending')
     physical_file_upload = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
     query_on_claim = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
+    query_reply_upload = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
     
     # Boolean fields
     claim_settled_software = models.BooleanField(default=False)

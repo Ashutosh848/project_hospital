@@ -17,7 +17,7 @@ import { DateInput } from '../Common/DateInput';
 
 interface ClaimTableProps {
   claims: Claim[];
-  onEdit: (claim: Claim) => void;
+  onEdit: (claim: Claim) => Promise<void>;
   onDelete: (id: string) => void;
   onView: (claim: Claim) => void;
   isLoading?: boolean;
@@ -27,6 +27,7 @@ interface ClaimTableProps {
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
   onFilterStateChange?: (hasActiveFilters: boolean) => void;
+  onFiltersCleared?: () => void;
 }
 
 export const ClaimTable: React.FC<ClaimTableProps> = ({ 
@@ -40,7 +41,8 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   onPageChange,
   searchTerm = '',
   onSearchChange,
-  onFilterStateChange
+  onFilterStateChange,
+  onFiltersCleared
 }) => {
   // Use props for pagination if provided, otherwise use local state
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
@@ -342,6 +344,11 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     setShowSettlementSuggestion(false);
     setShowFileStatusSuggestion(false);
     setEffectiveCurrentPage(1);
+    
+    // Notify parent component that filters were cleared
+    if (onFiltersCleared) {
+      onFiltersCleared();
+    }
   };
 
   const handleSort = (key: string) => {
@@ -1137,7 +1144,13 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => onEdit(claim)}
+                          onClick={async () => {
+                            try {
+                              await onEdit(claim);
+                            } catch (error) {
+                              console.error('Failed to edit claim:', error);
+                            }
+                          }}
                           className="text-indigo-600 hover:text-indigo-900 transition-colors"
                           title="Edit Claim"
                         >

@@ -25,8 +25,8 @@ class ClaimSerializer(serializers.ModelSerializer):
     hospital_discount_authority = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     other_deductions = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     tds = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
-    amount_settled_in_ac = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
-    total_settled_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    amount_settled_in_ac = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True)
+    total_settled_amount = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True)
     reason_less_settlement = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     claim_settled_software = serializers.BooleanField(required=False, default=False)
     receipt_verified_bank = serializers.BooleanField(required=False, default=False)
@@ -36,6 +36,7 @@ class ClaimSerializer(serializers.ModelSerializer):
     approval_letter = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
     physical_file_upload = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
     query_on_claim = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
+    query_reply_upload = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
     
     class Meta:
         model = Claim
@@ -56,8 +57,16 @@ class ClaimSerializer(serializers.ModelSerializer):
                     "Settlement date cannot be before discharge date."
                 )
         
+        # Handle file deletions
+        file_fields = ['approval_letter', 'physical_file_upload', 'query_on_claim', 'query_reply_upload']
+        for field in file_fields:
+            delete_key = f'{field}_delete'
+            if delete_key in data and data[delete_key] == 'true':
+                # Mark the field for deletion
+                data[field] = None
+                data.pop(delete_key, None)
+        
         # Handle empty files - remove them from data if they're empty
-        file_fields = ['approval_letter', 'physical_file_upload', 'query_on_claim']
         for field in file_fields:
             if field in data and data[field] is not None:
                 # Check if file is empty (no name or size 0)
@@ -84,7 +93,7 @@ class ClaimSerializer(serializers.ModelSerializer):
             'other_deductions', 'tds', 'amount_settled_in_ac', 'total_settled_amount'
         ]
         for field in numeric_fields:
-            if field in data and data[field] == '':
+            if field in data and (data[field] == '' or data[field] == 'null' or data[field] == 'undefined'):
                 data[field] = None
         
         return data

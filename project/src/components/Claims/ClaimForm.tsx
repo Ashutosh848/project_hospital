@@ -76,6 +76,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
       try {
         await claimsService.deleteClaimFile(initialData.id, fileField);
         setDeletedFiles(prev => new Set([...prev, fileField]));
+        console.log(`File ${fileField} deleted successfully`);
       } catch (error) {
         console.error('Failed to delete file:', error);
         alert('Failed to delete file. Please try again.');
@@ -145,6 +146,9 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
   };
 
   useEffect(() => {
+    // Reset deleted files when form opens
+    setDeletedFiles(new Set());
+    
     if (initialData) {
       // Convert Claim type to ClaimFormData type
       const formData: ClaimFormData = {
@@ -213,10 +217,19 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
 
   useEffect(() => {
     if (approvedAmount && tds !== undefined && otherDeductions !== undefined) {
+      // Validate that approved amount is reasonable (less than 1 billion)
+      if (approvedAmount > 1000000000) {
+        console.warn('Approved amount seems too large:', approvedAmount);
+        return;
+      }
+      
       const totalSettled = approvedAmount - (tds || 0) - (otherDeductions || 0);
       
-      setValue('total_settled_amount', totalSettled);
-      setValue('amount_settled_in_ac', totalSettled);
+      // Ensure the result is reasonable
+      if (totalSettled >= 0 && totalSettled <= 1000000000) {
+        setValue('total_settled_amount', totalSettled);
+        setValue('amount_settled_in_ac', totalSettled);
+      }
       // Note: difference_amount is calculated by backend
     }
   }, [approvedAmount, tds, otherDeductions, setValue]);
@@ -256,6 +269,10 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
             formData.append(key, data[key]);
           }
         }
+        // Handle file deletions - send a signal to remove the file
+        if (deletedFiles.has(key)) {
+          formData.append(`${key}_delete`, 'true');
+        }
         // Skip empty file fields completely
         return;
       }
@@ -265,9 +282,8 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
            'hospital_discount', 'paid_by_patient', 'other_deductions', 'tds', 
            'amount_settled_in_ac', 'total_settled_amount'].includes(key)) {
         const cleanedValue = cleanNumberValue(data[key]);
-        if (cleanedValue !== null) {
-          formData.append(key, String(cleanedValue));
-        }
+        // Always append number fields, even if null, to ensure updates work properly
+        formData.append(key, cleanedValue !== null ? String(cleanedValue) : '');
         return;
       }
       
@@ -297,8 +313,16 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     
     // Calculate difference amount only if we have valid amounts
     if (data.approved_amount && data.total_settled_amount) {
-      const difference = (data.approved_amount || 0) - (data.total_settled_amount || 0);
-      formData.append('difference_amount', String(difference));
+      // Validate amounts are reasonable before calculating
+      if (data.approved_amount <= 1000000000 && data.total_settled_amount <= 1000000000) {
+        const difference = (data.approved_amount || 0) - (data.total_settled_amount || 0);
+        formData.append('difference_amount', String(difference));
+      } else {
+        console.warn('Amounts too large for calculation:', {
+          approved_amount: data.approved_amount,
+          total_settled_amount: data.total_settled_amount
+        });
+      }
     }
     
     // Handle timestamps - preserve original created_at, update updated_at
@@ -309,11 +333,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     }
     formData.append('updated_at', new Date().toISOString());
     
-    // Debug: Log what's being sent
-    console.log('FormData being sent:');
-    for (const [key, value] of formData.entries()) {
-      console.log(key, value);
-    }
+
     
     // Pass FormData directly to onSubmit
     onSubmit(formData as any);

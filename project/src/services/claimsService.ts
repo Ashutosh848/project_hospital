@@ -131,6 +131,8 @@ export const claimsService = {
       });
     }
 
+
+
     const response = await api.patch<Claim>(`/claims/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

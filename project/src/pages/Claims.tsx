@@ -23,15 +23,26 @@ export const Claims: React.FC = () => {
   
   const { showToast } = useToast();
 
-  const loadAllClaims = useCallback(async () => {
+  const loadAllClaims = useCallback(async (search?: string) => {
     try {
-      const allClaimsData = await claimsService.getAllClaims();
+      let allClaimsData;
+      if (search) {
+        // For search, get all claims and filter them client-side
+        const allData = await claimsService.getAllClaims();
+        allClaimsData = allData.filter(claim => 
+          (claim.patient_name && claim.patient_name.toLowerCase().includes(search.toLowerCase())) ||
+          (claim.claim_id && claim.claim_id.toLowerCase().includes(search.toLowerCase())) ||
+          (claim.uhid_ip_no && claim.uhid_ip_no.toLowerCase().includes(search.toLowerCase()))
+        );
+      } else {
+        allClaimsData = await claimsService.getAllClaims();
+      }
       setAllClaims(allClaimsData);
     } catch (error) {
       console.error('Failed to load all claims:', error);
       showToast('Failed to load all claims', 'error');
     }
-  }, [showToast]);
+  }, []); // Remove showToast dependency to prevent unnecessary re-renders
 
   const loadClaims = useCallback(async (page: number = 1, search?: string) => {
     try {
@@ -47,23 +58,23 @@ export const Claims: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, []); // Remove showToast dependency to prevent unnecessary re-renders
 
   useEffect(() => {
     loadClaims();
     loadAllClaims(); // Load all claims for filtering
-  }, []);
+  }, []); // Only run once on mount
 
   useEffect(() => {
-    if (searchTerm) {
+    if (searchTerm && !hasActiveFilters) {
       const timeoutId = setTimeout(() => {
         loadClaims(1, searchTerm);
       }, 500);
       return () => clearTimeout(timeoutId);
-    } else {
+    } else if (!searchTerm && !hasActiveFilters) {
       loadClaims(1);
     }
-  }, [searchTerm, loadClaims]);
+  }, [searchTerm, hasActiveFilters]); // Remove loadClaims dependency
 
   const handleCreate = () => {
     setFormMode('create');
@@ -71,10 +82,17 @@ export const Claims: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (claim: Claim) => {
-    setFormMode('edit');
-    setSelectedClaim(claim);
-    setIsFormOpen(true);
+  const handleEdit = async (claim: Claim) => {
+    try {
+      // Fetch the complete claim data to ensure we have all fields
+      const completeClaim = await claimsService.getClaim(claim.id);
+      setFormMode('edit');
+      setSelectedClaim(completeClaim);
+      setIsFormOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch complete claim data:', error);
+      showToast('Failed to load claim data', 'error');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -82,6 +100,7 @@ export const Claims: React.FC = () => {
       try {
         await claimsService.deleteClaim(id);
         setClaims(prev => prev.filter(claim => claim.id !== id));
+        setAllClaims(prev => prev.filter(claim => claim.id !== id));
         showToast('Claim deleted successfully', 'success');
       } catch (error) {
         console.error('Failed to delete claim:', error);
@@ -95,15 +114,27 @@ export const Claims: React.FC = () => {
     setIsDetailsOpen(true);
   };
 
+  // Handle when filters are cleared to refresh data
+  const handleFiltersCleared = useCallback(() => {
+    if (!hasActiveFilters) {
+      loadClaims(1, searchTerm);
+    }
+  }, [hasActiveFilters, searchTerm]); // Remove loadClaims dependency
+
   const handleSubmit = async (claimData: Partial<Claim> | FormData) => {
     try {
       if (formMode === 'create') {
         const newClaim = await claimsService.createClaim(claimData as any);
         setClaims(prev => [newClaim, ...prev]);
+        setAllClaims(prev => [newClaim, ...prev]);
         showToast('Claim created successfully', 'success');
       } else if (selectedClaim) {
         const updatedClaim = await claimsService.updateClaim(selectedClaim.id, claimData as any);
+        // Update both claims and allClaims states
         setClaims(prev => prev.map(claim => 
+          claim.id === selectedClaim.id ? updatedClaim : claim
+        ));
+        setAllClaims(prev => prev.map(claim => 
           claim.id === selectedClaim.id ? updatedClaim : claim
         ));
         showToast('Claim updated successfully', 'success');
@@ -146,6 +177,7 @@ export const Claims: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onFilterStateChange={setHasActiveFilters}
+        onFiltersCleared={handleFiltersCleared}
       />
 
       <ClaimForm
