@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Claim } from '../../types';
 import { exportToCSV } from '../../utils/csvExport';
+import { DateInput } from '../Common/DateInput';
 
 interface ClaimTableProps {
   claims: Claim[];
@@ -616,7 +617,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Patient Name Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                <label className="block text-sm font-bold text-black mb-1">Patient Name</label>
                   <input
                     type="text"
                   value={filters.patientName}
@@ -628,7 +629,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
 
               {/* Claim ID Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Claim ID</label>
+                <label className="block text-sm font-bold text-black mb-1">Claim ID</label>
                 <input
                   type="text"
                   value={filters.claimId}
@@ -640,7 +641,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               
               {/* TPA Name Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">TPA Provider</label>
+                <label className="block text-sm font-bold text-black mb-1">TPA Provider</label>
                 <input
                   type="text"
                   value={filters.tpaName}
@@ -652,7 +653,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
 
               {/* Insurance Company Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Company</label>
+                <label className="block text-sm font-bold text-black mb-1">Insurance Company</label>
                 <input
                   type="text"
                   value={filters.parentInsurance}
@@ -664,7 +665,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
 
               {/* Settlement Status Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Settlement Status</label>
+                <label className="block text-sm font-bold text-black mb-1">Settlement Status</label>
                 <input
                   type="text"
                   value={settlementStatusInput}
@@ -697,7 +698,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
 
               {/* File Status Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">File Status</label>
+                <label className="block text-sm font-bold text-black mb-1">File Status</label>
                 <input
                   type="text"
                   value={fileStatusInput}
@@ -744,43 +745,39 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
 
               {/* Admission Date Range Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Date From</label>
-                <input
-                  type="date"
+                <DateInput
+                  label="Admission Date From"
                   value={filters.admissionDateFrom}
-                  onChange={(e) => handleFilterChange('admissionDateFrom', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(value) => handleFilterChange('admissionDateFrom', value)}
+                  className="mb-2"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Admission Date To</label>
-                <input
-                  type="date"
+                <DateInput
+                  label="Admission Date To"
                   value={filters.admissionDateTo}
-                  onChange={(e) => handleFilterChange('admissionDateTo', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(value) => handleFilterChange('admissionDateTo', value)}
+                  className="mb-2"
                 />
               </div>
 
               {/* Discharge Date Range Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Discharge Date From</label>
-                <input
-                  type="date"
+                <DateInput
+                  label="Discharge Date From"
                   value={filters.dischargeDateFrom}
-                  onChange={(e) => handleFilterChange('dischargeDateFrom', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(value) => handleFilterChange('dischargeDateFrom', value)}
+                  className="mb-2"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Discharge Date To</label>
-                <input
-                  type="date"
+                <DateInput
+                  label="Discharge Date To"
                   value={filters.dischargeDateTo}
-                  onChange={(e) => handleFilterChange('dischargeDateTo', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(value) => handleFilterChange('dischargeDateTo', value)}
+                  className="mb-2"
                 />
               </div>
               </div>

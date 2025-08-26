@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { claimsService } from '../services/claimsService';
 import { DashboardStats, ChartData } from '../types';
+import { DateInput } from '../components/Common/DateInput';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16'];
 
@@ -48,6 +49,12 @@ export const Dashboard: React.FC = () => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedTpa, setSelectedTpa] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({
+    startDate: '',
+    endDate: '',
+    company: '',
+    tpa: ''
+  });
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedChart, setSelectedChart] = useState('overview');
@@ -68,10 +75,17 @@ export const Dashboard: React.FC = () => {
       try {
         setIsLoading(true);
         
+        // Build query parameters for filtering
+        const params = new URLSearchParams();
+        if (appliedFilters.startDate) params.append('start_date', appliedFilters.startDate);
+        if (appliedFilters.endDate) params.append('end_date', appliedFilters.endDate);
+        if (appliedFilters.company) params.append('company', appliedFilters.company);
+        if (appliedFilters.tpa) params.append('tpa', appliedFilters.tpa);
+        
         const [statsData, monthlyDataData, companyDataData] = await Promise.all([
-          claimsService.getDashboardStats(),
-          claimsService.getMonthwiseData(),
-          claimsService.getCompanywiseData()
+          claimsService.getDashboardStats(params.toString()),
+          claimsService.getMonthwiseData(params.toString()),
+          claimsService.getCompanywiseData(params.toString())
         ]);
         
         setStats(statsData);
@@ -85,7 +99,30 @@ export const Dashboard: React.FC = () => {
     };
 
     loadDashboardData();
-  }, [refreshKey]);
+  }, [refreshKey, appliedFilters]);
+
+  // Handle filter application
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      company: selectedCompany,
+      tpa: selectedTpa
+    });
+  };
+
+  // Handle filter reset
+  const handleResetFilters = () => {
+    setDateRange({ start: '', end: '' });
+    setSelectedCompany('');
+    setSelectedTpa('');
+    setAppliedFilters({
+      startDate: '',
+      endDate: '',
+      company: '',
+      tpa: ''
+    });
+  };
 
   // Simulate real-time data updates
   useEffect(() => {
@@ -213,52 +250,61 @@ export const Dashboard: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="form-label">Start Date</label>
-            <input
-              type="date"
+            <DateInput
+              label="Start Date"
               value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="form-input"
+              onChange={(value) => setDateRange(prev => ({ ...prev, start: value }))}
+              className="mb-2"
             />
           </div>
           
           <div>
-            <label className="form-label">End Date</label>
-            <input
-              type="date"
+            <DateInput
+              label="End Date"
               value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="form-input"
+              onChange={(value) => setDateRange(prev => ({ ...prev, end: value }))}
+              className="mb-2"
             />
           </div>
           
           <div>
             <label className="form-label">Insurance Company</label>
-            <select
+            <input
+              type="text"
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="form-select"
-            >
-              <option value="">All Companies</option>
-              {uniqueCompanies.map(company => (
-                <option key={company} value={company}>{company}</option>
-              ))}
-            </select>
+              placeholder="Enter insurance company..."
+              className="form-input"
+            />
           </div>
           
           <div>
             <label className="form-label">TPA</label>
-            <select
+            <input
+              type="text"
               value={selectedTpa}
               onChange={(e) => setSelectedTpa(e.target.value)}
-              className="form-select"
-            >
-              <option value="">All TPAs</option>
-              {uniqueTpas.map(tpa => (
-                <option key={tpa} value={tpa}>{tpa}</option>
-              ))}
-            </select>
+              placeholder="Enter TPA..."
+              className="form-input"
+            />
           </div>
+        </div>
+        
+        {/* Filter Action Buttons */}
+        <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleResetFilters}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+          >
+            Reset
+          </button>
+          <button
+            onClick={handleApplyFilters}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Applying...' : 'Go'}
+          </button>
         </div>
       </div>
 
@@ -270,7 +316,6 @@ export const Dashboard: React.FC = () => {
           icon={DollarSign}
           color="bg-gradient-primary"
           isAmount
-          trend={{ value: 12.5, isUp: true }}
           subtitle="All claims combined"
         />
         <StatCard
@@ -279,7 +324,6 @@ export const Dashboard: React.FC = () => {
           icon={Target}
           color="bg-gradient-success"
           isAmount
-          trend={{ value: 8.3, isUp: true }}
           subtitle="Approved by insurance"
         />
         <StatCard
@@ -288,7 +332,6 @@ export const Dashboard: React.FC = () => {
           icon={Award}
           color="bg-gradient-warning"
           isAmount
-          trend={{ value: 2.1, isUp: false }}
           subtitle="Tax deducted at source"
         />
         <StatCard
@@ -296,7 +339,6 @@ export const Dashboard: React.FC = () => {
           value={stats.totalRejections}
           icon={AlertTriangle}
           color="bg-gradient-danger"
-          trend={{ value: 5.2, isUp: false }}
           subtitle="Claims rejected"
         />
       </div>
@@ -309,7 +351,6 @@ export const Dashboard: React.FC = () => {
           icon={Zap}
           color="bg-purple-500"
           isAmount
-          trend={{ value: 1.8, isUp: true }}
           subtitle="Consumable deductions"
         />
         <StatCard
@@ -318,7 +359,6 @@ export const Dashboard: React.FC = () => {
           icon={Users}
           color="bg-indigo-500"
           isAmount
-          trend={{ value: 3.4, isUp: true }}
           subtitle="Patient contributions"
         />
         <StatCard
@@ -567,10 +607,6 @@ export const Dashboard: React.FC = () => {
         <div className="card-header">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium text-gray-900">Recent Claims Summary</h3>
-            <button className="btn btn-primary">
-              <Eye className="w-4 h-4 mr-2" />
-              View All
-            </button>
           </div>
         </div>
         <div className="card-body">

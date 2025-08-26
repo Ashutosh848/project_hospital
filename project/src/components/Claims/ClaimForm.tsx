@@ -6,6 +6,7 @@ import { X, Upload, Trash2, Download } from 'lucide-react';
 import { Claim, ClaimFormData } from '../../types';
 import { format } from 'date-fns';
 import { claimsService } from '../../services/claimsService';
+import { DateInput } from '../Common/DateInput';
 
 const schema = yup.object<ClaimFormData>({
   date_of_admission: yup.string().nullable().optional(),
@@ -15,21 +16,21 @@ const schema = yup.object<ClaimFormData>({
   claim_id: yup.string().nullable().optional(),
   uhid_ip_no: yup.string().nullable().optional(),
   patient_name: yup.string().nullable().optional(),
-  bill_amount: yup.number().nullable().min(0, 'Bill amount cannot be negative').optional(),
-  approved_amount: yup.number().nullable().min(0, 'Approved amount cannot be negative').optional(),
-  mou_discount: yup.number().nullable().min(0, 'MOU discount cannot be negative').optional(),
-  co_pay: yup.number().nullable().min(0, 'Co-pay cannot be negative').optional(),
-  consumable_deduction: yup.number().nullable().min(0, 'Consumable deduction cannot be negative').optional(),
-  hospital_discount: yup.number().nullable().min(0, 'Hospital discount cannot be negative').optional(),
-  paid_by_patient: yup.number().nullable().min(0, 'Paid by patient cannot be negative').optional(),
+  bill_amount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Bill amount cannot be negative').optional(),
+  approved_amount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Approved amount cannot be negative').optional(),
+  mou_discount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'MOU discount cannot be negative').optional(),
+  co_pay: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Co-pay cannot be negative').optional(),
+  consumable_deduction: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Consumable deduction cannot be negative').optional(),
+  hospital_discount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Hospital discount cannot be negative').optional(),
+  paid_by_patient: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Paid by patient cannot be negative').optional(),
   hospital_discount_authority: yup.string().nullable().optional(),
-  other_deductions: yup.number().nullable().min(0, 'Other deductions cannot be negative').optional(),
+  other_deductions: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Other deductions cannot be negative').optional(),
   physical_file_dispatch: yup.string().oneOf(['pending', 'dispatched', 'received', 'not_required']).optional(),
   query_reply_date: yup.string().nullable().optional(),
   settlement_date: yup.string().nullable().optional(),
-  tds: yup.number().nullable().min(0, 'TDS cannot be negative').optional(),
-  amount_settled_in_ac: yup.number().nullable().min(0, 'Amount settled in account cannot be negative').optional(),
-  total_settled_amount: yup.number().nullable().min(0, 'Total settled amount cannot be negative').optional(),
+  tds: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'TDS cannot be negative').optional(),
+  amount_settled_in_ac: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Amount settled in account cannot be negative').optional(),
+  total_settled_amount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Total settled amount cannot be negative').optional(),
   reason_less_settlement: yup.string().nullable().optional(),
   claim_settled_software: yup.boolean().optional(),
   receipt_verified_bank: yup.boolean().optional(),
@@ -228,9 +229,17 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     const hasValue = (value: any): boolean => {
       if (value === undefined || value === null) return false;
       if (typeof value === 'string') return value.trim() !== '';
-      if (typeof value === 'number') return !isNaN(value);
+      if (typeof value === 'number') return !isNaN(value) && value !== null;
       if (typeof value === 'boolean') return true;
       return true;
+    };
+    
+    // Helper function to clean number values
+    const cleanNumberValue = (value: any): any => {
+      if (value === '' || value === null || value === undefined || isNaN(value)) {
+        return null;
+      }
+      return value;
     };
     
     // Add all form data - only include fields with meaningful values
@@ -248,6 +257,17 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
           }
         }
         // Skip empty file fields completely
+        return;
+      }
+      
+      // Handle number fields - clean them first
+      if (['bill_amount', 'approved_amount', 'mou_discount', 'co_pay', 'consumable_deduction', 
+           'hospital_discount', 'paid_by_patient', 'other_deductions', 'tds', 
+           'amount_settled_in_ac', 'total_settled_amount'].includes(key)) {
+        const cleanedValue = cleanNumberValue(data[key]);
+        if (cleanedValue !== null) {
+          formData.append(key, String(cleanedValue));
+        }
         return;
       }
       
@@ -307,7 +327,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
 
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-7xl sm:w-full">
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-7xl sm:w-full relative" style={{ zIndex: 60 }}>
           <div className="bg-white px-8 pt-8">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-2xl font-semibold text-gray-900">{title}</h3>
@@ -324,33 +344,23 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Date of Admission (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      {...register('date_of_admission')}
+                    <DateInput
+                      label="Date of Admission (Optional)"
+                      value={watch('date_of_admission') || ''}
+                      onChange={(value) => setValue('date_of_admission', value)}
                       name="date_of_admission"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      error={errors.date_of_admission?.message}
                     />
-                    {errors.date_of_admission && (
-                      <p className="mt-1 text-sm text-red-600">{errors.date_of_admission.message}</p>
-                    )}
                   </div>
 
                   <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Date of Discharge (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      {...register('date_of_discharge')}
+                    <DateInput
+                      label="Date of Discharge (Optional)"
+                      value={watch('date_of_discharge') || ''}
+                      onChange={(value) => setValue('date_of_discharge', value)}
                       name="date_of_discharge"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      error={errors.date_of_discharge?.message}
                     />
-                    {errors.date_of_discharge && (
-                      <p className="mt-1 text-sm text-red-600">{errors.date_of_discharge.message}</p>
-                    )}
                   </div>
 
                   <div>
@@ -613,17 +623,13 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Date of Upload/Dispatch
-                    </label>
-                    <input
-                      type="date"
-                      {...register('query_reply_date')}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    <DateInput
+                      label="Date of Upload/Dispatch"
+                      value={watch('query_reply_date') || ''}
+                      onChange={(value) => setValue('query_reply_date', value)}
+                      name="query_reply_date"
+                      error={errors.query_reply_date?.message}
                     />
-                    {errors.query_reply_date && (
-                      <p className="mt-1 text-sm text-red-600">{errors.query_reply_date.message}</p>
-                    )}
                   </div>
 
                   {renderFileField('physical_file_upload', 'POD Upload (PDF Format)', initialData?.physical_file_upload)}
@@ -631,33 +637,25 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                   {renderFileField('query_on_claim', 'Query on Claim (PDF Format)', initialData?.query_on_claim)}
 
                   <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Query Reply Date
-                    </label>
-                    <input
-                      type="date"
-                      {...register('query_reply_date')}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    <DateInput
+                      label="Query Reply Date"
+                      value={watch('query_reply_date') || ''}
+                      onChange={(value) => setValue('query_reply_date', value)}
+                      name="query_reply_date"
+                      error={errors.query_reply_date?.message}
                     />
-                    {errors.query_reply_date && (
-                      <p className="mt-1 text-sm text-red-600">{errors.query_reply_date.message}</p>
-                    )}
                   </div>
 
                   {renderFileField('query_reply_upload', 'Query Reply Upload (PDF Format)', initialData?.query_reply_upload)}
 
                   <div>
-                    <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Settlement Date
-                    </label>
-                    <input
-                      type="date"
-                      {...register('settlement_date')}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    <DateInput
+                      label="Settlement Date"
+                      value={watch('settlement_date') || ''}
+                      onChange={(value) => setValue('settlement_date', value)}
+                      name="settlement_date"
+                      error={errors.settlement_date?.message}
                     />
-                    {errors.settlement_date && (
-                      <p className="mt-1 text-sm text-red-600">{errors.settlement_date.message}</p>
-                    )}
                   </div>
 
                   <div className="lg:col-span-2">

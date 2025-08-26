@@ -169,6 +169,100 @@
     @apply w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-white relative z-10;
   }
 
+  /* Date input styles to fix positioning issues in modals */
+  input[type="date"] {
+    position: relative;
+    z-index: 70 !important;
+  }
+
+  /* Ensure date picker appears above modal */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    z-index: 71 !important;
+  }
+
+  /* Fix for date picker positioning in modals */
+  .modal-content input[type="date"] {
+    position: relative;
+    z-index: 70 !important;
+  }
+
+  /* Additional fixes for date picker positioning */
+  input[type="date"]::-webkit-datetime-edit {
+    z-index: 70 !important;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    z-index: 70 !important;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-text {
+    z-index: 70 !important;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-day-field,
+  input[type="date"]::-webkit-datetime-edit-year-field {
+    z-index: 70 !important;
+  }
+
+  /* Ensure date picker dropdown appears above everything */
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    z-index: 100 !important;
+  }
+
+  /* Fix for Firefox date picker */
+  input[type="date"]::-moz-calendar-picker-indicator {
+    z-index: 70 !important;
+  }
+
+  /* Force date picker to render at document level with proper positioning */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    position: fixed !important;
+    z-index: 9999 !important;
+  }
+
+  /* Alternative approach: Use a higher z-index for the entire modal */
+  .fixed.inset-0.z-50 {
+    z-index: 9999 !important;
+  }
+
+  /* Ensure date picker appears above everything */
+  input[type="date"]:focus {
+    z-index: 10000 !important;
+  }
+
+  /* Force the date picker to render at the top level */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 10000 !important;
+  }
+
+  /* Custom DateInput component styles */
+  .date-input-container {
+    position: relative;
+  }
+
+  .date-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    margin-top: 0.25rem;
+    min-width: 280px;
+    padding: 1rem;
+  }
+
+  /* Ensure the date picker appears above modals */
+  .modal-content .date-picker-dropdown {
+    z-index: 10000 !important;
+  }
+
   .form-label {
     @apply block text-sm font-medium text-gray-700 mb-2;
   }

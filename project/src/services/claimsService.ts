@@ -147,18 +147,21 @@ export const claimsService = {
     await api.delete(`/claims/${claimId}/delete-file/${fileField}/`);
   },
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    const response = await api.get<DashboardStats>('/claims/dashboard/summary/');
+  async getDashboardStats(params?: string): Promise<DashboardStats> {
+    const url = params ? `/claims/dashboard/summary/?${params}` : '/claims/dashboard/summary/';
+    const response = await api.get<DashboardStats>(url);
     return response.data;
   },
 
-  async getMonthwiseData(): Promise<ChartData[]> {
-    const response = await api.get<ChartData[]>('/claims/dashboard/monthwise/');
+  async getMonthwiseData(params?: string): Promise<ChartData[]> {
+    const url = params ? `/claims/dashboard/monthwise/?${params}` : '/claims/dashboard/monthwise/';
+    const response = await api.get<ChartData[]>(url);
     return response.data;
   },
 
-  async getCompanywiseData(): Promise<ChartData[]> {
-    const response = await api.get<ChartData[]>('/claims/dashboard/companywise/');
+  async getCompanywiseData(params?: string): Promise<ChartData[]> {
+    const url = params ? `/claims/dashboard/companywise/?${params}` : '/claims/dashboard/companywise/';
+    const response = await api.get<ChartData[]>(url);
     return response.data;
   },
 };
