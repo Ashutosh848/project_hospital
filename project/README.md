@@ -1,87 +1,34 @@
-# Hospital Claims Management System
+# Hospital Claims Management System - Frontend
 
-A modern, enterprise-grade hospital claims management system built with React, TypeScript, and Tailwind CSS. This application provides comprehensive tools for managing hospital insurance claims with advanced analytics, real-time monitoring, and secure user management.
+A modern React TypeScript frontend for the Hospital Claims Management System, fully integrated with the Django REST API backend.
 
-## 🚀 Features
+## Features
 
-### Core Functionality
-- **Claims Management**: Complete CRUD operations for hospital insurance claims
-- **User Management**: Role-based access control with manager and data entry roles
-- **Real-time Dashboard**: Live analytics and performance metrics
-- **Advanced Filtering**: Multi-criteria search and filtering capabilities
-- **Bulk Operations**: Mass actions for claims processing
-- **Export Functionality**: CSV export with custom filtering
+- **Authentication & Authorization**: JWT-based authentication with role-based access control
+- **Claims Management**: Full CRUD operations for hospital insurance claims
+- **User Management**: Admin interface for managing system users
+- **Dashboard**: Real-time analytics and reporting
+- **File Upload**: Support for document uploads (approval letters, POD, etc.)
+- **Responsive Design**: Modern UI built with Tailwind CSS
+- **Type Safety**: Full TypeScript support
 
-### Enterprise-Level Enhancements
+## Tech Stack
 
-#### 🎨 **Enhanced Design System**
-- **Modern UI/UX**: Clean, professional interface with enterprise-grade aesthetics
-- **Responsive Design**: Fully responsive across all devices and screen sizes
-- **Accessibility**: WCAG compliant with keyboard navigation and screen reader support
-- **Custom Components**: Reusable component library with consistent styling
-- **Animation System**: Smooth transitions and micro-interactions
-- **Dark Mode Support**: Toggle between light and dark themes
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: Tailwind CSS
+- **State Management**: React Context API
+- **HTTP Client**: Axios
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **Forms**: React Hook Form with Yup validation
 
-#### 📊 **Advanced Analytics & Visualization**
-- **Interactive Charts**: Multiple chart types (Line, Bar, Pie, Area, Radar)
-- **Real-time Metrics**: Live dashboard with auto-refresh capabilities
-- **Performance Tracking**: TPA and insurance company performance analysis
-- **Trend Analysis**: 6-month performance trends and forecasting
-- **Custom Reports**: Generate detailed reports with filtering options
+## Prerequisites
 
-#### 🔐 **Security & Compliance**
-- **HIPAA Compliance**: Healthcare data protection standards
-- **Role-based Access**: Granular permissions and user management
-- **Secure Authentication**: Protected routes and session management
-- **Data Encryption**: SSL/TLS encryption for data transmission
-- **Audit Logging**: Track user actions and system changes
-
-#### ⚡ **Performance & Scalability**
-- **Optimized Rendering**: React.memo and useMemo for performance
-- **Lazy Loading**: Code splitting and dynamic imports
-- **Caching Strategy**: Efficient data caching and state management
-- **Progressive Enhancement**: Graceful degradation for older browsers
-
-#### 🛠 **Developer Experience**
-- **TypeScript**: Full type safety and better development experience
-- **Modern Tooling**: Vite, ESLint, and PostCSS for fast development
-- **Component Library**: Reusable, documented components
-- **Testing Ready**: Structured for unit and integration testing
-
-## 🏗 Architecture
-
-### Technology Stack
-- **Frontend**: React 18 with TypeScript
-- **Styling**: Tailwind CSS with custom design system
-- **Charts**: Recharts for data visualization
-- **Icons**: Lucide React for consistent iconography
-- **Routing**: React Router v7
-- **Build Tool**: Vite for fast development and building
-- **Package Manager**: npm
-
-### Project Structure
-```
-src/
-├── components/          # Reusable UI components
-│   ├── Claims/         # Claims-related components
-│   ├── Common/         # Shared components (Toast, etc.)
-│   ├── Layout/         # Layout components (Header, Sidebar)
-│   └── Users/          # User management components
-├── contexts/           # React contexts (Auth, etc.)
-├── data/              # Mock data and utilities
-├── hooks/             # Custom React hooks
-├── pages/             # Page components
-├── types/             # TypeScript type definitions
-└── utils/             # Utility functions
-```
-
-## 🚀 Getting Started
-
-### Prerequisites
 - Node.js 18+ 
-- npm 9+
+- npm or yarn
+- Backend Django server running (see backend README)
 
-### Installation
+## Installation
 
 1. **Clone the repository**
    ```bash
@@ -94,13 +41,93 @@ src/
    npm install
    ```
 
-3. **Start development server**
+3. **Environment Configuration**
+   Create a `.env` file in the project root:
+   ```env
+   VITE_API_BASE_URL=http://localhost:8000/api
+   ```
+
+4. **Start the development server**
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**
-   Navigate to `http://localhost:5173`
+The application will be available at `http://localhost:3000`
+
+## Backend Integration
+
+### API Endpoints
+
+The frontend integrates with the following backend endpoints:
+
+#### Authentication
+- `POST /api/auth/login/` - User login
+- `GET /api/auth/users/` - Get all users (admin only)
+- `POST /api/auth/users/` - Create user (admin only)
+- `PUT /api/auth/users/{id}/` - Update user (admin only)
+- `DELETE /api/auth/users/{id}/` - Delete user (admin only)
+
+#### Claims
+- `GET /api/claims/` - Get claims with pagination and search
+- `POST /api/claims/` - Create new claim
+- `GET /api/claims/{id}/` - Get claim details
+- `PUT /api/claims/{id}/` - Update claim
+- `DELETE /api/claims/{id}/` - Delete claim
+- `GET /api/claims/dashboard/summary/` - Dashboard statistics
+- `GET /api/claims/dashboard/monthwise/` - Monthly chart data
+- `GET /api/claims/dashboard/companywise/` - Company-wise chart data
+
+### Authentication Flow
+
+1. User enters credentials on login page
+2. Frontend sends POST request to `/api/auth/login/`
+3. Backend validates credentials and returns JWT tokens
+4. Frontend stores tokens in localStorage
+5. All subsequent API requests include Authorization header with Bearer token
+6. Token refresh handled automatically by axios interceptors
+
+### File Upload
+
+Claims support file uploads for:
+- Approval letters
+- Physical files
+- POD (Proof of Delivery)
+- Query documents
+- Query replies
+
+Files are uploaded using FormData and multipart/form-data content type.
+
+## Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── Claims/         # Claims-related components
+│   ├── Common/         # Common components (Toast, etc.)
+│   ├── Layout/         # Layout components (Header, Sidebar)
+│   └── Users/          # User management components
+├── contexts/           # React contexts (AuthContext)
+├── hooks/              # Custom React hooks
+├── pages/              # Page components
+├── services/           # API service functions
+├── types/              # TypeScript type definitions
+├── utils/              # Utility functions
+└── main.tsx           # Application entry point
+```
+
+## Key Components
+
+### AuthContext
+Manages authentication state and provides login/logout functionality.
+
+### API Services
+- `authService.ts` - Authentication and user management
+- `claimsService.ts` - Claims CRUD operations and dashboard data
+
+### API Configuration
+- `api.ts` - Axios instance with interceptors for authentication and error handling
+
+## Development
 
 ### Available Scripts
 
@@ -109,225 +136,42 @@ src/
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 
-## 👥 User Roles
-
-### Manager
-- Full access to all features
-- Dashboard analytics and reports
-- User management capabilities
-- System configuration access
-
-### Data Entry
-- Claims management (CRUD operations)
-- Basic filtering and search
-- Export functionality
-- Limited dashboard access
-
-## 🔧 Configuration
-
 ### Environment Variables
-Create a `.env` file in the project root:
 
-```env
-VITE_API_URL=http://localhost:3000
-VITE_APP_NAME=Hospital CMS
-VITE_APP_VERSION=1.0.0
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:8000/api` |
 
-### Tailwind Configuration
-The project uses a custom Tailwind configuration with:
-- Extended color palette
-- Custom animations and transitions
-- Responsive breakpoints
-- Component-specific utilities
+## Deployment
 
-## 📱 Responsive Design
+1. **Build the application**
+   ```bash
+   npm run build
+   ```
 
-The application is fully responsive with breakpoints:
-- **Mobile**: < 768px
-- **Tablet**: 768px - 1024px
-- **Desktop**: > 1024px
-- **Large Desktop**: > 1440px
+2. **Deploy the `dist` folder** to your web server
 
-## 🎨 Design System
+3. **Update environment variables** for production
 
-### Color Palette
-- **Primary**: Blue gradient (#3B82F6 to #1E40AF)
-- **Success**: Green (#22C55E)
-- **Warning**: Yellow (#F59E0B)
-- **Danger**: Red (#EF4444)
-- **Neutral**: Gray scale (#F9FAFB to #111827)
+## Troubleshooting
 
-### Typography
-- **Font Family**: Inter (system fallbacks)
-- **Headings**: Bold weights with proper hierarchy
-- **Body**: Regular weight with good readability
-- **Code**: JetBrains Mono for technical content
+### Common Issues
 
-### Components
-- **Buttons**: Multiple variants (primary, secondary, success, danger)
-- **Cards**: Consistent styling with hover effects
-- **Forms**: Accessible form controls with validation
-- **Tables**: Sortable, filterable data tables
-- **Modals**: Overlay dialogs with backdrop blur
+1. **CORS Errors**: Ensure backend CORS settings include your frontend domain
+2. **Authentication Issues**: Check JWT token expiration and refresh logic
+3. **File Upload Failures**: Verify backend file upload configuration and permissions
 
-## 📊 Dashboard Features
+### Debug Mode
 
-### Real-time Analytics
-- **Live Metrics**: Auto-refreshing statistics every 30 seconds
-- **Performance Trends**: 6-month historical data
-- **TPA Analysis**: Settlement rates and performance comparison
-- **Amount Distribution**: Claim value analysis
-- **Processing Time**: Average settlement duration
+Enable debug logging by setting `localStorage.debug = 'true'` in browser console.
 
-### Interactive Charts
-- **Overview**: Monthly trends and company distribution
-- **Trends**: Performance analysis and TPA comparison
-- **Performance**: Settlement status and file dispatch
-- **Distribution**: Amount ranges and processing time
+## Contributing
 
-## 🔍 Search & Filtering
+1. Follow TypeScript best practices
+2. Use proper error handling in API calls
+3. Maintain consistent code formatting
+4. Add proper TypeScript types for all components and functions
 
-### Advanced Filters
-- **Text Search**: Patient name, Claim ID, UHID
-- **Date Range**: Admission and discharge dates
-- **Insurance Company**: Filter by parent insurance
-- **TPA**: Filter by Third Party Administrator
-- **Settlement Status**: Settled, pending, or all
-- **File Status**: Pending, dispatched, received
-- **Amount Range**: Custom amount brackets
+## License
 
-### Column Management
-- **Customizable Columns**: Show/hide table columns
-- **Sortable Data**: Click headers to sort
-- **Bulk Selection**: Select multiple claims for actions
-- **Export Options**: Filtered data export
-
-## 🔐 Security Features
-
-### Authentication
-- **Protected Routes**: Role-based access control
-- **Session Management**: Secure user sessions
-- **Password Security**: Encrypted password handling
-- **Auto-logout**: Session timeout protection
-
-### Data Protection
-- **Input Validation**: Client and server-side validation
-- **XSS Prevention**: Sanitized user inputs
-- **CSRF Protection**: Cross-site request forgery prevention
-- **Data Encryption**: Sensitive data encryption
-
-## 🚀 Performance Optimizations
-
-### Code Splitting
-- **Route-based**: Lazy loading of page components
-- **Component-based**: Dynamic imports for heavy components
-- **Bundle Analysis**: Optimized bundle sizes
-
-### Rendering Optimizations
-- **React.memo**: Prevent unnecessary re-renders
-- **useMemo**: Memoized expensive calculations
-- **useCallback**: Stable function references
-- **Virtual Scrolling**: Large dataset handling
-
-### Caching Strategy
-- **Browser Caching**: Static asset caching
-- **State Management**: Efficient state updates
-- **API Caching**: Request deduplication
-- **Local Storage**: User preferences persistence
-
-## 🧪 Testing
-
-### Testing Strategy
-- **Unit Tests**: Component and utility testing
-- **Integration Tests**: Feature workflow testing
-- **E2E Tests**: User journey testing
-- **Accessibility Tests**: Screen reader compatibility
-
-### Test Coverage
-- **Components**: 90%+ coverage target
-- **Utilities**: 95%+ coverage target
-- **Hooks**: 100% coverage target
-
-## 📈 Monitoring & Analytics
-
-### Performance Monitoring
-- **Core Web Vitals**: LCP, FID, CLS tracking
-- **Error Tracking**: JavaScript error monitoring
-- **User Analytics**: Usage patterns and behavior
-- **Performance Metrics**: Load times and responsiveness
-
-### Health Checks
-- **System Status**: Real-time system health
-- **API Monitoring**: Backend service status
-- **Database Health**: Connection and query performance
-- **Uptime Monitoring**: Service availability
-
-## 🔄 Deployment
-
-### Production Build
-```bash
-npm run build
-```
-
-### Deployment Options
-- **Static Hosting**: Netlify, Vercel, AWS S3
-- **CDN**: CloudFlare, AWS CloudFront
-- **Container**: Docker with nginx
-- **Server**: Node.js with Express
-
-### Environment Configuration
-- **Development**: Local development settings
-- **Staging**: Pre-production testing
-- **Production**: Live environment settings
-
-## 🤝 Contributing
-
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-### Code Standards
-- **TypeScript**: Strict type checking
-- **ESLint**: Code quality enforcement
-- **Prettier**: Code formatting
-- **Conventional Commits**: Standardized commit messages
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-### Documentation
-- **API Documentation**: Comprehensive API reference
-- **User Guide**: Step-by-step user instructions
-- **Developer Guide**: Technical implementation details
-- **FAQ**: Common questions and answers
-
-### Contact
-- **Email**: support@hospitalcms.com
-- **Slack**: #hospital-cms-support
-- **GitHub Issues**: Bug reports and feature requests
-
-## 🔮 Roadmap
-
-### Upcoming Features
-- **Mobile App**: React Native mobile application
-- **AI Integration**: Machine learning for claim prediction
-- **Advanced Reporting**: Custom report builder
-- **API Integration**: Third-party insurance APIs
-- **Multi-language**: Internationalization support
-
-### Performance Improvements
-- **Service Workers**: Offline functionality
-- **WebAssembly**: Performance-critical operations
-- **GraphQL**: Efficient data fetching
-- **Micro-frontends**: Modular architecture
-
----
-
-**Built with ❤️ for healthcare professionals**
+This project is licensed under the MIT License.

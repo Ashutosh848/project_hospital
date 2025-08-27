@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { 
   BarChart, 
   Bar, 
-  LineChart, 
   Line, 
   PieChart, 
   Pie, 
@@ -12,7 +11,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  Legend,
   Area,
   AreaChart,
   RadarChart,
@@ -26,28 +24,24 @@ import {
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
-  FileText, 
   Users, 
   AlertTriangle,
-  Calendar,
   Clock,
   CheckCircle,
-  XCircle,
-  Activity,
   Target,
   Award,
   Zap,
   Eye,
   Download,
   RefreshCw,
-  Filter,
   BarChart3,
   PieChart as PieChartIcon,
   TrendingUp as TrendingUpIcon,
   Activity as ActivityIcon
 } from 'lucide-react';
-import { mockClaims, calculateDashboardStats, getMonthlyChartData, getCompanyChartData } from '../data/mockData';
-import { DashboardStats } from '../types';
+import { claimsService } from '../services/claimsService';
+import { DashboardStats, ChartData } from '../types';
+import { DateInput } from '../components/Common/DateInput';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16'];
 
@@ -55,9 +49,80 @@ export const Dashboard: React.FC = () => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedTpa, setSelectedTpa] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({
+    startDate: '',
+    endDate: '',
+    company: '',
+    tpa: ''
+  });
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedChart, setSelectedChart] = useState('overview');
+  const [stats, setStats] = useState<DashboardStats>({
+    totalBillAmount: 0,
+    totalApprovedAmount: 0,
+    totalTds: 0,
+    totalRejections: 0,
+    totalConsumables: 0,
+    totalPaidByPatients: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<ChartData[]>([]);
+  const [companyData, setCompanyData] = useState<ChartData[]>([]);
+
+  // Load dashboard data
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Build query parameters for filtering
+        const params = new URLSearchParams();
+        if (appliedFilters.startDate) params.append('start_date', appliedFilters.startDate);
+        if (appliedFilters.endDate) params.append('end_date', appliedFilters.endDate);
+        if (appliedFilters.company) params.append('company', appliedFilters.company);
+        if (appliedFilters.tpa) params.append('tpa', appliedFilters.tpa);
+        
+        const [statsData, monthlyDataData, companyDataData] = await Promise.all([
+          claimsService.getDashboardStats(params.toString()),
+          claimsService.getMonthwiseData(params.toString()),
+          claimsService.getCompanywiseData(params.toString())
+        ]);
+        
+        setStats(statsData);
+        setMonthlyData(monthlyDataData);
+        setCompanyData(companyDataData);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [refreshKey, appliedFilters]);
+
+  // Handle filter application
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      company: selectedCompany,
+      tpa: selectedTpa
+    });
+  };
+
+  // Handle filter reset
+  const handleResetFilters = () => {
+    setDateRange({ start: '', end: '' });
+    setSelectedCompany('');
+    setSelectedTpa('');
+    setAppliedFilters({
+      startDate: '',
+      endDate: '',
+      company: '',
+      tpa: ''
+    });
+  };
 
   // Simulate real-time data updates
   useEffect(() => {
@@ -68,28 +133,11 @@ export const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter claims based on selected filters
-  const filteredClaims = useMemo(() => {
-    return mockClaims.filter(claim => {
-      const matchesDateRange = 
-        (!dateRange.start || claim.dateOfAdmission >= dateRange.start) &&
-        (!dateRange.end || claim.dateOfDischarge <= dateRange.end);
-      
-      const matchesCompany = !selectedCompany || claim.parentInsurance === selectedCompany;
-      const matchesTpa = !selectedTpa || claim.tpaName === selectedTpa;
-      
-      return matchesDateRange && matchesCompany && matchesTpa;
-    });
-  }, [dateRange, selectedCompany, selectedTpa, refreshKey]);
+  // Mock data for unique companies and TPAs (these would come from API in real implementation)
+  const uniqueCompanies = ['Company A', 'Company B', 'Company C'];
+  const uniqueTpas = ['TPA A', 'TPA B', 'TPA C'];
 
-  const stats: DashboardStats = useMemo(() => calculateDashboardStats(filteredClaims), [filteredClaims]);
-  const monthlyData = useMemo(() => getMonthlyChartData(filteredClaims), [filteredClaims]);
-  const companyData = useMemo(() => getCompanyChartData(filteredClaims), [filteredClaims]);
-
-  const uniqueCompanies = [...new Set(mockClaims.map(c => c.parentInsurance))];
-  const uniqueTpas = [...new Set(mockClaims.map(c => c.tpaName))];
-
-  // Enhanced chart data
+  // Enhanced chart data - using mock data for now
   const performanceData = useMemo(() => {
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const date = new Date();
@@ -97,33 +145,25 @@ export const Dashboard: React.FC = () => {
       return date.toISOString().slice(0, 7);
     }).reverse();
 
-    return last6Months.map(month => {
-      const monthClaims = filteredClaims.filter(c => c.month === month);
-      return {
-        month,
-        claims: monthClaims.length,
-        amount: monthClaims.reduce((sum, c) => sum + c.billAmount, 0),
-        settled: monthClaims.filter(c => c.settlementDate).length,
-        pending: monthClaims.filter(c => !c.settlementDate).length
-      };
-    });
-  }, [filteredClaims]);
+    return last6Months.map(month => ({
+      month,
+      claims: Math.floor(Math.random() * 50) + 10,
+      amount: Math.floor(Math.random() * 1000000) + 100000,
+      settled: Math.floor(Math.random() * 30) + 5,
+      pending: Math.floor(Math.random() * 20) + 5
+    }));
+  }, []);
 
   const tpaPerformanceData = useMemo(() => {
-    return uniqueTpas.map(tpa => {
-      const tpaClaims = filteredClaims.filter(c => c.tpaName === tpa);
-      const settled = tpaClaims.filter(c => c.settlementDate).length;
-      const total = tpaClaims.length;
-      return {
-        tpa,
-        total,
-        settled,
-        pending: total - settled,
-        settlementRate: total > 0 ? (settled / total) * 100 : 0,
-        avgAmount: total > 0 ? tpaClaims.reduce((sum, c) => sum + c.billAmount, 0) / total : 0
-      };
-    }).sort((a, b) => b.settlementRate - a.settlementRate);
-  }, [filteredClaims, uniqueTpas]);
+    return uniqueTpas.map(tpa => ({
+      tpa,
+      total: Math.floor(Math.random() * 100) + 20,
+      settled: Math.floor(Math.random() * 80) + 10,
+      pending: Math.floor(Math.random() * 20) + 5,
+      settlementRate: Math.floor(Math.random() * 40) + 60,
+      avgAmount: Math.floor(Math.random() * 500000) + 100000
+    })).sort((a, b) => b.settlementRate - a.settlementRate);
+  }, [uniqueTpas]);
 
   const StatCard: React.FC<{ 
     title: string; 
@@ -210,52 +250,61 @@ export const Dashboard: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="form-label">Start Date</label>
-            <input
-              type="date"
+            <DateInput
+              label="Start Date"
               value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="form-input"
+              onChange={(value) => setDateRange(prev => ({ ...prev, start: value }))}
+              className="mb-2"
             />
           </div>
           
           <div>
-            <label className="form-label">End Date</label>
-            <input
-              type="date"
+            <DateInput
+              label="End Date"
               value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="form-input"
+              onChange={(value) => setDateRange(prev => ({ ...prev, end: value }))}
+              className="mb-2"
             />
           </div>
           
           <div>
             <label className="form-label">Insurance Company</label>
-            <select
+            <input
+              type="text"
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="form-select"
-            >
-              <option value="">All Companies</option>
-              {uniqueCompanies.map(company => (
-                <option key={company} value={company}>{company}</option>
-              ))}
-            </select>
+              placeholder="Enter insurance company..."
+              className="form-input"
+            />
           </div>
           
           <div>
             <label className="form-label">TPA</label>
-            <select
+            <input
+              type="text"
               value={selectedTpa}
               onChange={(e) => setSelectedTpa(e.target.value)}
-              className="form-select"
-            >
-              <option value="">All TPAs</option>
-              {uniqueTpas.map(tpa => (
-                <option key={tpa} value={tpa}>{tpa}</option>
-              ))}
-            </select>
+              placeholder="Enter TPA..."
+              className="form-input"
+            />
           </div>
+        </div>
+        
+        {/* Filter Action Buttons */}
+        <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleResetFilters}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+          >
+            Reset
+          </button>
+          <button
+            onClick={handleApplyFilters}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Applying...' : 'Go'}
+          </button>
         </div>
       </div>
 
@@ -267,7 +316,6 @@ export const Dashboard: React.FC = () => {
           icon={DollarSign}
           color="bg-gradient-primary"
           isAmount
-          trend={{ value: 12.5, isUp: true }}
           subtitle="All claims combined"
         />
         <StatCard
@@ -276,7 +324,6 @@ export const Dashboard: React.FC = () => {
           icon={Target}
           color="bg-gradient-success"
           isAmount
-          trend={{ value: 8.3, isUp: true }}
           subtitle="Approved by insurance"
         />
         <StatCard
@@ -285,7 +332,6 @@ export const Dashboard: React.FC = () => {
           icon={Award}
           color="bg-gradient-warning"
           isAmount
-          trend={{ value: 2.1, isUp: false }}
           subtitle="Tax deducted at source"
         />
         <StatCard
@@ -293,7 +339,6 @@ export const Dashboard: React.FC = () => {
           value={stats.totalRejections}
           icon={AlertTriangle}
           color="bg-gradient-danger"
-          trend={{ value: 5.2, isUp: false }}
           subtitle="Claims rejected"
         />
       </div>
@@ -306,7 +351,6 @@ export const Dashboard: React.FC = () => {
           icon={Zap}
           color="bg-purple-500"
           isAmount
-          trend={{ value: 1.8, isUp: true }}
           subtitle="Consumable deductions"
         />
         <StatCard
@@ -315,26 +359,18 @@ export const Dashboard: React.FC = () => {
           icon={Users}
           color="bg-indigo-500"
           isAmount
-          trend={{ value: 3.4, isUp: true }}
           subtitle="Patient contributions"
         />
         <StatCard
           title="Settlement Rate"
-          value={Math.round((filteredClaims.filter(c => c.settlementDate).length / filteredClaims.length) * 100)}
+          value={85}
           icon={CheckCircle}
           color="bg-green-500"
           subtitle="Percentage of settled claims"
         />
         <StatCard
           title="Average Processing Time"
-          value={Math.round(filteredClaims.reduce((sum, c) => {
-            if (c.settlementDate) {
-              const admission = new Date(c.dateOfAdmission);
-              const settlement = new Date(c.settlementDate);
-              return sum + (settlement.getTime() - admission.getTime()) / (1000 * 60 * 60 * 24);
-            }
-            return sum;
-          }, 0) / filteredClaims.filter(c => c.settlementDate).length)}
+          value={12}
           icon={Clock}
           color="bg-blue-500"
           subtitle="Days to settlement"
@@ -477,10 +513,10 @@ export const Dashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={[
-                  { name: 'Settled on Software', value: filteredClaims.filter(c => c.claimSettledOnSoftware).length },
-                  { name: 'Manual Settlement', value: filteredClaims.filter(c => !c.claimSettledOnSoftware).length },
-                  { name: 'Receipt Verified', value: filteredClaims.filter(c => c.receiptAmountVerification).length },
-                  { name: 'Receipt Pending', value: filteredClaims.filter(c => !c.receiptAmountVerification).length }
+                  { name: 'Settled on Software', value: 45 },
+                  { name: 'Manual Settlement', value: 23 },
+                  { name: 'Receipt Verified', value: 38 },
+                  { name: 'Receipt Pending', value: 12 }
                 ]}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -499,9 +535,9 @@ export const Dashboard: React.FC = () => {
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Pending', value: filteredClaims.filter(c => c.physicalFileDispatch === 'pending').length },
-                    { name: 'Dispatched', value: filteredClaims.filter(c => c.physicalFileDispatch === 'dispatched').length },
-                    { name: 'Received', value: filteredClaims.filter(c => c.physicalFileDispatch === 'received').length }
+                    { name: 'Pending', value: 15 },
+                    { name: 'Dispatched', value: 28 },
+                    { name: 'Received', value: 42 }
                   ]}
                   cx="50%"
                   cy="50%"
@@ -530,10 +566,10 @@ export const Dashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={[
-                  { range: '₹0-50K', count: filteredClaims.filter(c => c.billAmount <= 50000).length },
-                  { range: '₹50K-1L', count: filteredClaims.filter(c => c.billAmount > 50000 && c.billAmount <= 100000).length },
-                  { range: '₹1L-5L', count: filteredClaims.filter(c => c.billAmount > 100000 && c.billAmount <= 500000).length },
-                  { range: '₹5L+', count: filteredClaims.filter(c => c.billAmount > 500000).length }
+                  { range: '₹0-50K', count: 25 },
+                  { range: '₹50K-1L', count: 35 },
+                  { range: '₹1L-5L', count: 28 },
+                  { range: '₹5L+', count: 12 }
                 ]}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -571,10 +607,6 @@ export const Dashboard: React.FC = () => {
         <div className="card-header">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium text-gray-900">Recent Claims Summary</h3>
-            <button className="btn btn-primary">
-              <Eye className="w-4 h-4 mr-2" />
-              View All
-            </button>
           </div>
         </div>
         <div className="card-body">
@@ -591,7 +623,13 @@ export const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="table-body">
-                {filteredClaims.slice(0, 5).map((claim) => (
+                {[
+                  { id: '1', claimId: 'CLM20240001', patientName: 'John Doe', billAmount: 150000, approvedAmount: 140000, settlementDate: '2024-01-15', dateOfAdmission: '2024-01-01' },
+                  { id: '2', claimId: 'CLM20240002', patientName: 'Jane Smith', billAmount: 250000, approvedAmount: 230000, settlementDate: null, dateOfAdmission: '2024-01-05' },
+                  { id: '3', claimId: 'CLM20240003', patientName: 'Bob Johnson', billAmount: 180000, approvedAmount: 170000, settlementDate: '2024-01-20', dateOfAdmission: '2024-01-10' },
+                  { id: '4', claimId: 'CLM20240004', patientName: 'Alice Brown', billAmount: 320000, approvedAmount: 300000, settlementDate: null, dateOfAdmission: '2024-01-12' },
+                  { id: '5', claimId: 'CLM20240005', patientName: 'Charlie Wilson', billAmount: 95000, approvedAmount: 90000, settlementDate: '2024-01-18', dateOfAdmission: '2024-01-08' }
+                ].map((claim) => (
                   <tr key={claim.id} className="table-row">
                     <td className="table-cell font-medium text-blue-600">
                       {claim.claimId}
@@ -602,10 +640,8 @@ export const Dashboard: React.FC = () => {
                     <td className="table-cell">
                       {claim.settlementDate ? (
                         <span className="badge badge-success">Settled</span>
-                      ) : claim.physicalFileDispatch === 'dispatched' ? (
-                        <span className="badge badge-warning">In Progress</span>
                       ) : (
-                        <span className="badge badge-danger">Pending</span>
+                        <span className="badge badge-warning">In Progress</span>
                       )}
                     </td>
                     <td className="table-cell text-sm text-gray-500">

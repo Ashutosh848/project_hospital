@@ -1,0 +1,169 @@
+import api from '../utils/api';
+import { Claim, DashboardStats, ChartData } from '../types';
+
+export interface ClaimsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Claim[];
+}
+
+export interface CreateClaimRequest {
+  month: string;
+  date_of_admission: string;
+  date_of_discharge: string;
+  tpa_name: string;
+  parent_insurance: string;
+  claim_id: string;
+  uhid_ip_no: string;
+  patient_name: string;
+  bill_amount: number;
+  approved_amount: number;
+  mou_discount: number;
+  co_pay: number;
+  consumable_deduction: number;
+  hospital_discount: number;
+  paid_by_patient: number;
+  hospital_discount_authority: string;
+  other_deductions: number;
+  approval_letter?: File;
+  physical_file_dispatch: 'pending' | 'dispatched' | 'received' | 'not_required';
+  physical_file_upload?: File;
+  query_on_claim?: File;
+  query_reply_date: string;
+  settlement_date: string;
+  tds: number;
+  amount_settled_in_ac: number;
+  total_settled_amount: number;
+  reason_less_settlement: string;
+  claim_settled_software: boolean;
+  receipt_verified_bank: boolean;
+}
+
+export const claimsService = {
+  async getClaims(page: number = 1, search?: string): Promise<ClaimsResponse> {
+    const params = new URLSearchParams();
+    if (page > 1) params.append('page', page.toString());
+    if (search) params.append('search', search);
+    
+    const response = await api.get<ClaimsResponse>(`/claims/?${params.toString()}`);
+    return response.data;
+  },
+
+  async getAllClaims(): Promise<Claim[]> {
+    let allClaims: Claim[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('page_size', '100'); // Request 100 items per page
+      
+      const response = await api.get<ClaimsResponse>(`/claims/?${params.toString()}`);
+      allClaims = [...allClaims, ...response.data.results];
+      
+      // Check if there are more pages
+      hasMore = response.data.next !== null;
+      page++;
+      
+      // Safety check to prevent infinite loops
+      if (page > 50) {
+        console.warn('Reached maximum page limit while fetching all claims');
+        break;
+      }
+    }
+    
+    console.log('Fetched all claims:', allClaims.length);
+    return allClaims;
+  },
+
+  async getClaim(id: string): Promise<Claim> {
+    const response = await api.get<Claim>(`/claims/${id}/`);
+    return response.data;
+  },
+
+  async createClaim(claimData: CreateClaimRequest | FormData): Promise<Claim> {
+    let formData: FormData;
+    
+    if (claimData instanceof FormData) {
+      formData = claimData;
+    } else {
+      formData = new FormData();
+      
+      // Add all text fields
+      Object.entries(claimData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (value instanceof File) {
+            formData.append(key, value);
+          } else {
+            formData.append(key, String(value));
+          }
+        }
+      });
+    }
+
+    const response = await api.post<Claim>('/claims/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async updateClaim(id: string, claimData: Partial<CreateClaimRequest> | FormData): Promise<Claim> {
+    let formData: FormData;
+    
+    if (claimData instanceof FormData) {
+      formData = claimData;
+    } else {
+      formData = new FormData();
+      
+      // Add all text fields
+      Object.entries(claimData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (value instanceof File) {
+            formData.append(key, value);
+          } else {
+            formData.append(key, String(value));
+          }
+        }
+      });
+    }
+
+
+
+    const response = await api.patch<Claim>(`/claims/${id}/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async deleteClaim(id: string): Promise<void> {
+    await api.delete(`/claims/${id}/`);
+  },
+
+  async deleteClaimFile(claimId: string, fileField: string): Promise<void> {
+    await api.delete(`/claims/${claimId}/delete-file/${fileField}/`);
+  },
+
+  async getDashboardStats(params?: string): Promise<DashboardStats> {
+    const url = params ? `/claims/dashboard/summary/?${params}` : '/claims/dashboard/summary/';
+    const response = await api.get<DashboardStats>(url);
+    return response.data;
+  },
+
+  async getMonthwiseData(params?: string): Promise<ChartData[]> {
+    const url = params ? `/claims/dashboard/monthwise/?${params}` : '/claims/dashboard/monthwise/';
+    const response = await api.get<ChartData[]>(url);
+    return response.data;
+  },
+
+  async getCompanywiseData(params?: string): Promise<ChartData[]> {
+    const url = params ? `/claims/dashboard/companywise/?${params}` : '/claims/dashboard/companywise/';
+    const response = await api.get<ChartData[]>(url);
+    return response.data;
+  },
+};

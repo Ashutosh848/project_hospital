@@ -8,6 +8,7 @@ interface UserTableProps {
   onDelete: (id: string) => void;
   onToggleStatus: (id: string) => void;
   onResetPassword: (id: string) => void;
+  isLoading?: boolean;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({
@@ -15,7 +16,8 @@ export const UserTable: React.FC<UserTableProps> = ({
   onEdit,
   onDelete,
   onToggleStatus,
-  onResetPassword
+  onResetPassword,
+  isLoading = false
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,8 +26,11 @@ export const UserTable: React.FC<UserTableProps> = ({
 
   const itemsPerPage = 10;
 
-  // Filter users
-  const filteredUsers = users.filter(user => {
+
+
+  // Ensure users is an array and filter users
+  const usersArray = Array.isArray(users) ? users : [];
+  const filteredUsers = usersArray.filter(user => {
     const matchesSearch = 
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -80,7 +85,13 @@ export const UserTable: React.FC<UserTableProps> = ({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="spinner w-8 h-8"></div>
+            <span className="ml-3 text-gray-600">Loading users...</span>
+          </div>
+        ) : (
+          <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -180,6 +191,7 @@ export const UserTable: React.FC<UserTableProps> = ({
             ))}
           </tbody>
         </table>
+        )}
       </div>
 
       {/* Pagination */}

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -11,9 +11,19 @@ const schema = yup.object({
   password: yup.string().when('$isEdit', {
     is: false,
     then: (schema) => schema.required('Password is required').min(6, 'Password must be at least 6 characters'),
-    otherwise: (schema) => schema.min(6, 'Password must be at least 6 characters')
+    otherwise: (schema) => schema.optional().test('password-length', 'Password must be at least 6 characters', function(value) {
+      // Only validate length if password is provided and not empty
+      if (!value || value.trim() === '') {
+        return true; // Skip validation for empty passwords
+      }
+      return value.length >= 6;
+    })
   }),
-  role: yup.string().oneOf(['data_entry', 'manager']).required('Role is required')
+  role: yup.string().required('Role is required').test('valid-role', 'Please enter either "data_entry" or "manager"', function(value) {
+    if (!value) return false;
+    const validRoles = ['data_entry', 'manager'];
+    return validRoles.includes(value.toLowerCase().trim());
+  })
 });
 
 interface UserFormProps {
@@ -32,22 +42,32 @@ export const UserForm: React.FC<UserFormProps> = ({
   title
 }) => {
   const isEdit = !!initialData;
+  const [roleInput, setRoleInput] = useState(initialData?.role || '');
+  const [showRoleSuggestion, setShowRoleSuggestion] = useState(false);
   
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset
+    reset,
+    setValue
   } = useForm({
     resolver: yupResolver(schema),
     context: { isEdit },
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      username: initialData.username,
+      email: initialData.email,
+      password: '',
+      role: initialData.role
+    } : {
       username: '',
       email: '',
       password: '',
       role: 'data_entry'
     }
   });
+
+
 
   useEffect(() => {
     if (initialData) {
@@ -57,6 +77,7 @@ export const UserForm: React.FC<UserFormProps> = ({
         password: '',
         role: initialData.role
       });
+      setRoleInput(initialData.role);
     } else {
       reset({
         username: '',
@@ -64,17 +85,31 @@ export const UserForm: React.FC<UserFormProps> = ({
         password: '',
         role: 'data_entry'
       });
+      setRoleInput('data_entry');
     }
+    setShowRoleSuggestion(false);
   }, [initialData, reset]);
+
+  const handleRoleChange = (value: string) => {
+    setRoleInput(value);
+    setValue('role', value);
+    
+    // Show suggestion if input doesn't match valid roles
+    const validRoles = ['data_entry', 'manager'];
+    const normalizedValue = value.toLowerCase().trim();
+    setShowRoleSuggestion(value.length > 0 && !validRoles.includes(normalizedValue));
+  };
 
   const handleFormSubmit = (data: any) => {
     const formattedData = {
       ...data,
+      role: data.role.toLowerCase().trim(), // Normalize role input
       status: initialData?.status || 'active',
       createdAt: initialData?.createdAt || new Date().toISOString()
     };
     
-    if (isEdit && !data.password) {
+    // Remove password if it's empty or only whitespace
+    if (!data.password || data.password.trim() === '') {
       delete formattedData.password;
     }
     
@@ -142,6 +177,11 @@ export const UserForm: React.FC<UserFormProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder={isEdit ? 'Enter new password (optional)' : 'Enter password'}
                 />
+                {isEdit && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Leave this field empty to keep the current password unchanged.
+                  </p>
+                )}
                 {errors.password && (
                   <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
                 )}
@@ -151,13 +191,34 @@ export const UserForm: React.FC<UserFormProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role *
                 </label>
-                <select
-                  {...register('role')}
+                <input
+                  type="text"
+                  value={roleInput}
+                  onChange={(e) => handleRoleChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="data_entry">Data Entry</option>
-                  <option value="manager">Manager</option>
-                </select>
+                  placeholder="Enter role (data_entry or manager)"
+                />
+                {showRoleSuggestion && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800 font-medium mb-1">Suggested roles:</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleRoleChange('data_entry')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        data_entry
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRoleChange('manager')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        manager
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {errors.role && (
                   <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
                 )}

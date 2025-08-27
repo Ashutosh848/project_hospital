@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Edit, 
   Trash2, 
@@ -6,42 +6,28 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Download,
-  Filter,
-  Search,
-  Calendar,
   FileText,
-  Upload,
-  MoreHorizontal,
-  CheckSquare,
-  Square,
-  RefreshCw,
-  BarChart3,
-  Settings,
   Columns,
-  SortAsc,
-  SortDesc,
-  FilterX,
-  Save,
-  Share2,
-  Printer,
-  Mail,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Info,
-  TrendingUp,
-  TrendingDown
+  Filter,
+  X
 } from 'lucide-react';
 import { Claim } from '../../types';
 import { exportToCSV } from '../../utils/csvExport';
+import { DateInput } from '../Common/DateInput';
 
 interface ClaimTableProps {
   claims: Claim[];
-  onEdit: (claim: Claim) => void;
+  onEdit: (claim: Claim) => Promise<void>;
   onDelete: (id: string) => void;
   onView: (claim: Claim) => void;
   isLoading?: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
+  onFilterStateChange?: (hasActiveFilters: boolean) => void;
+  onFiltersCleared?: () => void;
 }
 
 export const ClaimTable: React.FC<ClaimTableProps> = ({ 
@@ -49,102 +35,222 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   onEdit, 
   onDelete, 
   onView,
-  isLoading = false
+  isLoading = false,
+  currentPage = 1,
+  totalPages = 1,
+  onPageChange,
+  searchTerm = '',
+  onSearchChange,
+  onFilterStateChange,
+  onFiltersCleared
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
+  // Use props for pagination if provided, otherwise use local state
+  const [localCurrentPage, setLocalCurrentPage] = useState(1);
+  const effectiveCurrentPage = onPageChange ? currentPage : localCurrentPage;
+  const setEffectiveCurrentPage = onPageChange ? onPageChange : setLocalCurrentPage;
   const [selectedClaims, setSelectedClaims] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Claim;
     direction: 'asc' | 'desc';
   } | null>(null);
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
+    'month', 'date_of_admission', 'date_of_discharge', 'tpa_name', 'claim_id', 
+    'patient_name', 'bill_amount', 'approved_amount', 'settlement_status', 'files', 'actions'
+  ]));
+
+  // Filter state
   const [filters, setFilters] = useState({
-    search: '',
+    patientName: '',
+    claimId: '',
     tpaName: '',
     parentInsurance: '',
-    dateFrom: '',
-    dateTo: '',
     settlementStatus: '',
-    amountRange: '',
-    fileStatus: ''
+    fileStatus: '',
+    admissionDateFrom: '',
+    admissionDateTo: '',
+    dischargeDateFrom: '',
+    dischargeDateTo: ''
   });
-  const [showFilters, setShowFilters] = useState(false);
-  const [showColumnSelector, setShowColumnSelector] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
-    'month', 'admissionDate', 'dischargeDate', 'tpaName', 'claimId', 
-    'patientName', 'billAmount', 'approvedAmount', 'status', 'actions'
-  ]));
+
+  // Applied filters state (what's actually being used for filtering)
+  const [appliedFilters, setAppliedFilters] = useState({
+    patientName: '',
+    claimId: '',
+    tpaName: '',
+    parentInsurance: '',
+    settlementStatus: '',
+    fileStatus: '',
+    admissionDateFrom: '',
+    admissionDateTo: '',
+    dischargeDateFrom: '',
+    dischargeDateTo: ''
+  });
+
+  // Filter input states for text inputs with suggestions
+  const [settlementStatusInput, setSettlementStatusInput] = useState('');
+  const [fileStatusInput, setFileStatusInput] = useState('');
+  const [showSettlementSuggestion, setShowSettlementSuggestion] = useState(false);
+  const [showFileStatusSuggestion, setShowFileStatusSuggestion] = useState(false);
 
   const itemsPerPage = 20;
 
-  // Get unique values for dropdowns
-  const uniqueTpaNames = [...new Set(claims.map(claim => claim.tpaName))].sort();
-  const uniqueInsuranceCompanies = [...new Set(claims.map(claim => claim.parentInsurance))].sort();
+  // Initialize filter inputs when component mounts
+  useEffect(() => {
+    setSettlementStatusInput(filters.settlementStatus);
+    setFileStatusInput(filters.fileStatus);
+  }, []); // Only run once on mount
+
+
+
+
 
   // Column definitions
   const columns = [
     { key: 'select', label: '', width: 'w-12', sortable: false },
     { key: 'month', label: 'Month', width: 'w-24', sortable: true },
-    { key: 'admissionDate', label: 'Admission Date', width: 'w-32', sortable: true },
-    { key: 'dischargeDate', label: 'Discharge Date', width: 'w-32', sortable: true },
-    { key: 'tpaName', label: 'TPA Name', width: 'w-40', sortable: true },
-    { key: 'parentInsurance', label: 'Parent Insurance', width: 'w-40', sortable: true },
-    { key: 'claimId', label: 'Claim ID', width: 'w-32', sortable: true },
-    { key: 'uhidIpNo', label: 'UHID/IP No', width: 'w-32', sortable: true },
-    { key: 'patientName', label: 'Patient Name', width: 'w-40', sortable: true },
-    { key: 'billAmount', label: 'Bill Amount', width: 'w-32', sortable: true },
-    { key: 'approvedAmount', label: 'Approved Amount', width: 'w-36', sortable: true },
-    { key: 'mouDiscount', label: 'MOU Discount', width: 'w-32', sortable: true },
-    { key: 'coPay', label: 'Co-pay', width: 'w-24', sortable: true },
-    { key: 'consumableDeduction', label: 'Consumable Deduction', width: 'w-40', sortable: true },
-    { key: 'hospitalDiscount', label: 'Hospital Discount', width: 'w-36', sortable: true },
-    { key: 'paidByPatient', label: 'Paid by Patient', width: 'w-32', sortable: true },
-    { key: 'hospitalDiscountAuthority', label: 'Hospital Discount Authority', width: 'w-44', sortable: true },
-    { key: 'otherDeductions', label: 'Other Deductions', width: 'w-36', sortable: true },
-    { key: 'physicalFileDispatch', label: 'File Status', width: 'w-32', sortable: true },
-    { key: 'dateOfUploadDispatch', label: 'Upload/Dispatch Date', width: 'w-40', sortable: true },
-    { key: 'queryReplyDate', label: 'Query Reply Date', width: 'w-36', sortable: true },
-    { key: 'settlementDate', label: 'Settlement Date', width: 'w-36', sortable: true },
+    { key: 'date_of_admission', label: 'Admission Date', width: 'w-32', sortable: true },
+    { key: 'date_of_discharge', label: 'Discharge Date', width: 'w-32', sortable: true },
+    { key: 'tpa_name', label: 'TPA Name', width: 'w-40', sortable: true },
+    { key: 'parent_insurance', label: 'Parent Insurance', width: 'w-40', sortable: true },
+    { key: 'claim_id', label: 'Claim ID', width: 'w-32', sortable: true },
+    { key: 'uhid_ip_no', label: 'UHID/IP No', width: 'w-32', sortable: true },
+    { key: 'patient_name', label: 'Patient Name', width: 'w-40', sortable: true },
+    { key: 'bill_amount', label: 'Bill Amount', width: 'w-32', sortable: true },
+    { key: 'approved_amount', label: 'Approved Amount', width: 'w-36', sortable: true },
+    { key: 'mou_discount', label: 'MOU Discount', width: 'w-32', sortable: true },
+    { key: 'co_pay', label: 'Co-pay', width: 'w-24', sortable: true },
+    { key: 'consumable_deduction', label: 'Consumable Deduction', width: 'w-40', sortable: true },
+    { key: 'hospital_discount', label: 'Hospital Discount', width: 'w-36', sortable: true },
+    { key: 'paid_by_patient', label: 'Paid by Patient', width: 'w-32', sortable: true },
+    { key: 'hospital_discount_authority', label: 'Hospital Discount Authority', width: 'w-44', sortable: true },
+    { key: 'other_deductions', label: 'Other Deductions', width: 'w-36', sortable: true },
+    { key: 'physical_file_dispatch', label: 'File Status', width: 'w-32', sortable: true },
+    { key: 'date_of_upload_dispatch', label: 'Upload/Dispatch Date', width: 'w-40', sortable: true },
+    { key: 'query_reply_date', label: 'Query Reply Date', width: 'w-36', sortable: true },
+    { key: 'settlement_status', label: 'Settlement Status', width: 'w-32', sortable: true },
+    { key: 'settlement_date', label: 'Settlement Date', width: 'w-36', sortable: true },
     { key: 'tds', label: 'TDS', width: 'w-24', sortable: true },
-    { key: 'amountSettledInAccount', label: 'Amount Settled in A/C', width: 'w-44', sortable: true },
-    { key: 'totalSettledAmount', label: 'Total Settled Amount', width: 'w-40', sortable: true },
-    { key: 'differenceApprovedSettled', label: 'Difference (Approved vs Settled)', width: 'w-48', sortable: true },
-    { key: 'reasonForLessSettlement', label: 'Reason for Less Settlement', width: 'w-44', sortable: true },
-    { key: 'claimSettledOnSoftware', label: 'Claim Settled on Software', width: 'w-44', sortable: true },
-    { key: 'receiptAmountVerification', label: 'Receipt Amount Verification', width: 'w-48', sortable: true },
+    { key: 'amount_settled_in_ac', label: 'Amount Settled in A/C', width: 'w-44', sortable: true },
+    { key: 'total_settled_amount', label: 'Total Settled Amount', width: 'w-40', sortable: true },
+    { key: 'difference_amount', label: 'Difference (Approved vs Settled)', width: 'w-48', sortable: true },
+    { key: 'reason_less_settlement', label: 'Reason for Less Settlement', width: 'w-44', sortable: true },
+    { key: 'claim_settled_software', label: 'Claim Settled on Software', width: 'w-44', sortable: true },
+    { key: 'receipt_verified_bank', label: 'Receipt Amount Verification', width: 'w-48', sortable: true },
+    { key: 'files', label: 'Files', width: 'w-32', sortable: false },
     { key: 'actions', label: 'Actions', width: 'w-24', sortable: false }
   ];
 
-  // Filter claims based on current filters
+  // Apply search and filters to claims
   const filteredClaims = useMemo(() => {
-    return claims.filter(claim => {
-      const matchesSearch = !filters.search || 
-        claim.patientName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        claim.claimId.toLowerCase().includes(filters.search.toLowerCase()) ||
-        claim.uhidIpNo.toLowerCase().includes(filters.search.toLowerCase());
-      
-      const matchesTPA = !filters.tpaName || 
-        claim.tpaName === filters.tpaName;
-      
-      const matchesInsurance = !filters.parentInsurance || 
-        claim.parentInsurance === filters.parentInsurance;
-      
-      const matchesDateFrom = !filters.dateFrom || 
-        new Date(claim.dateOfAdmission) >= new Date(filters.dateFrom);
-      
-      const matchesDateTo = !filters.dateTo || 
-        new Date(claim.dateOfDischarge) <= new Date(filters.dateTo);
-      
-      const matchesSettlement = !filters.settlementStatus || 
-        (filters.settlementStatus === 'settled' && claim.settlementDate) ||
-        (filters.settlementStatus === 'pending' && !claim.settlementDate);
+    let filtered = claims;
 
-      const matchesFileStatus = !filters.fileStatus || 
-        claim.physicalFileDispatch === filters.fileStatus;
+    // Apply search filter
+    if (searchTerm && onSearchChange) {
+      filtered = filtered.filter(claim => {
+        return (
+          (claim.patient_name && claim.patient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (claim.claim_id && claim.claim_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (claim.uhid_ip_no && claim.uhid_ip_no.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      });
+    }
 
-      return matchesSearch && matchesTPA && matchesInsurance && 
-             matchesDateFrom && matchesDateTo && matchesSettlement && matchesFileStatus;
-    });
-  }, [claims, filters]);
+    // Apply patient name filter
+    if (appliedFilters.patientName) {
+      filtered = filtered.filter(claim => 
+        claim.patient_name && claim.patient_name.toLowerCase().includes(appliedFilters.patientName.toLowerCase())
+      );
+    }
+
+    // Apply claim ID filter
+    if (appliedFilters.claimId) {
+      filtered = filtered.filter(claim => 
+        claim.claim_id && claim.claim_id.toLowerCase().includes(appliedFilters.claimId.toLowerCase())
+      );
+    }
+
+    // Apply TPA filter
+    if (appliedFilters.tpaName) {
+      filtered = filtered.filter(claim => 
+        claim.tpa_name && claim.tpa_name.toLowerCase().includes(appliedFilters.tpaName.toLowerCase())
+      );
+    }
+
+    // Apply insurance filter
+    if (appliedFilters.parentInsurance) {
+      filtered = filtered.filter(claim => 
+        claim.parent_insurance && claim.parent_insurance.toLowerCase().includes(appliedFilters.parentInsurance.toLowerCase())
+      );
+    }
+
+    // Apply settlement status filter
+    if (appliedFilters.settlementStatus) {
+      filtered = filtered.filter(claim => {
+        if (appliedFilters.settlementStatus === 'settled') {
+          return claim.settlement_date && claim.settlement_date.trim() !== '';
+        } else if (appliedFilters.settlementStatus === 'pending') {
+          return !claim.settlement_date || claim.settlement_date.trim() === '';
+        }
+            return true;
+      });
+    }
+
+    // Apply file status filter
+    if (appliedFilters.fileStatus) {
+      filtered = filtered.filter(claim => claim.physical_file_dispatch === appliedFilters.fileStatus);
+    }
+
+    // Apply admission date range filter
+    if (appliedFilters.admissionDateFrom || appliedFilters.admissionDateTo) {
+      filtered = filtered.filter(claim => {
+        if (!claim.date_of_admission) return false;
+        
+        const admissionDate = new Date(claim.date_of_admission);
+        if (isNaN(admissionDate.getTime())) return false;
+        
+        const fromDate = appliedFilters.admissionDateFrom ? new Date(appliedFilters.admissionDateFrom) : null;
+        const toDate = appliedFilters.admissionDateTo ? new Date(appliedFilters.admissionDateTo) : null;
+        
+        if (fromDate && admissionDate < fromDate) return false;
+        if (toDate && admissionDate > toDate) return false;
+        
+        return true;
+      });
+    }
+
+    // Apply discharge date range filter
+    if (appliedFilters.dischargeDateFrom || appliedFilters.dischargeDateTo) {
+      filtered = filtered.filter(claim => {
+        if (!claim.date_of_discharge) return false;
+        
+        const dischargeDate = new Date(claim.date_of_discharge);
+        if (isNaN(dischargeDate.getTime())) return false;
+        
+        const fromDate = appliedFilters.dischargeDateFrom ? new Date(appliedFilters.dischargeDateFrom) : null;
+        const toDate = appliedFilters.dischargeDateTo ? new Date(appliedFilters.dischargeDateTo) : null;
+        
+        if (fromDate && dischargeDate < fromDate) return false;
+        if (toDate && dischargeDate > toDate) return false;
+        
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [claims, searchTerm, onSearchChange, appliedFilters]);
+
+  const hasActiveFilters = Object.values(appliedFilters).some(v => v && v !== '');
+  const hasPendingFilters = Object.values(filters).some(v => v && v !== '') && 
+    JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+
+  // Notify parent component when filter state changes
+  useEffect(() => {
+    if (onFilterStateChange) {
+      onFilterStateChange(hasActiveFilters);
+    }
+  }, [hasActiveFilters, onFilterStateChange]);
 
   // Sort filtered claims
   const sortedClaims = useMemo(() => {
@@ -153,6 +259,11 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     return [...filteredClaims].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
+
+      // Handle undefined values
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (bValue === undefined) return sortConfig.direction === 'asc' ? 1 : -1;
 
       if (aValue < bValue) {
         return sortConfig.direction === 'asc' ? -1 : 1;
@@ -164,42 +275,91 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     });
   }, [filteredClaims, sortConfig]);
 
-  // Paginate sorted claims
+  // Determine if we should use server-side or client-side pagination
+  // Use client-side pagination when filters are applied, otherwise use server-side
+  // This ensures that filtered results are properly paginated locally
+  const useServerPagination = onPageChange && !hasActiveFilters;
+  
+  // For server-side pagination, use claims directly; for client-side, paginate locally
   const paginatedClaims = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return sortedClaims.slice(startIndex, startIndex + itemsPerPage);
-  }, [sortedClaims, currentPage]);
+    if (useServerPagination) {
+      // Server-side pagination: claims are already paginated by the server
+      return sortedClaims;
+    } else {
+      // Client-side pagination: paginate locally
+      const startIndex = (effectiveCurrentPage - 1) * itemsPerPage;
+      return sortedClaims.slice(startIndex, startIndex + itemsPerPage);
+    }
+  }, [sortedClaims, effectiveCurrentPage, itemsPerPage, useServerPagination]);
 
-  const totalPages = Math.ceil(sortedClaims.length / itemsPerPage);
+  const localTotalPages = Math.ceil(sortedClaims.length / itemsPerPage);
+  const effectiveTotalPages = useServerPagination ? totalPages : localTotalPages;
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1);
+  };
+
+  const handleSettlementStatusChange = (value: string) => {
+    setSettlementStatusInput(value);
+    setFilters(prev => ({ ...prev, settlementStatus: value }));
+    
+    // Show suggestion if input doesn't match valid options
+    const validOptions = ['settled', 'pending'];
+    const normalizedValue = value.toLowerCase().trim();
+    setShowSettlementSuggestion(value.length > 0 && !validOptions.includes(normalizedValue));
+  };
+
+  const handleFileStatusChange = (value: string) => {
+    setFileStatusInput(value);
+    setFilters(prev => ({ ...prev, fileStatus: value }));
+    
+    // Show suggestion if input doesn't match valid options
+    const validOptions = ['pending', 'dispatched', 'received', 'not_required'];
+    const normalizedValue = value.toLowerCase().trim();
+    setShowFileStatusSuggestion(value.length > 0 && !validOptions.includes(normalizedValue));
+  };
+
+  const applyFilters = () => {
+    setAppliedFilters(filters);
+    setEffectiveCurrentPage(1);
   };
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
+    const emptyFilters = {
+      patientName: '',
+      claimId: '',
       tpaName: '',
       parentInsurance: '',
-      dateFrom: '',
-      dateTo: '',
       settlementStatus: '',
-      amountRange: '',
-      fileStatus: ''
-    });
-    setCurrentPage(1);
+      fileStatus: '',
+      admissionDateFrom: '',
+      admissionDateTo: '',
+      dischargeDateFrom: '',
+      dischargeDateTo: ''
+    };
+    setFilters(emptyFilters);
+    setAppliedFilters(emptyFilters);
+    setSettlementStatusInput('');
+    setFileStatusInput('');
+    setShowSettlementSuggestion(false);
+    setShowFileStatusSuggestion(false);
+    setEffectiveCurrentPage(1);
+    
+    // Notify parent component that filters were cleared
+    if (onFiltersCleared) {
+      onFiltersCleared();
+    }
   };
 
-  const handleSort = (key: keyof Claim) => {
+  const handleSort = (key: string) => {
     setSortConfig(current => {
       if (current?.key === key) {
         return {
-          key,
+          key: key as keyof Claim,
           direction: current.direction === 'asc' ? 'desc' : 'asc'
         };
       }
-      return { key, direction: 'asc' };
+      return { key: key as keyof Claim, direction: 'asc' };
     });
   };
 
@@ -238,17 +398,19 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN');
-  };
-
-  const getStatusBadge = (claim: Claim) => {
-    if (claim.settlementDate) {
-      return <span className="badge badge-success">Settled</span>;
-    } else if (claim.physicalFileDispatch === 'dispatched') {
-      return <span className="badge badge-warning">In Progress</span>;
-    } else {
-      return <span className="badge badge-danger">Pending</span>;
+    // Handle empty, null, or invalid date strings
+    if (!dateString || dateString.trim() === '' || dateString === 'null' || dateString === 'undefined') {
+      return 'N/A';
     }
+    
+    const date = new Date(dateString);
+    
+    // Check if the date is valid (not Invalid Date)
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
+    
+    return date.toLocaleDateString('en-IN');
   };
 
   const getFileStatusBadge = (status: string) => {
@@ -270,16 +432,80 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
       <span className="badge badge-warning">Pending</span>;
   };
 
-  // Calculate summary statistics
-  const summaryStats = useMemo(() => {
-    const total = filteredClaims.length;
-    const settled = filteredClaims.filter(c => c.settlementDate).length;
-    const pending = total - settled;
-    const totalAmount = filteredClaims.reduce((sum, c) => sum + c.billAmount, 0);
-    const approvedAmount = filteredClaims.reduce((sum, c) => sum + c.approvedAmount, 0);
+  const getSettlementStatusBadge = (settlementDate: string) => {
+    if (!settlementDate || settlementDate.trim() === '' || settlementDate === 'null' || settlementDate === 'undefined') {
+      return <span className="badge badge-warning">Pending</span>;
+    }
+    
+    const date = new Date(settlementDate);
+    if (isNaN(date.getTime())) {
+      return <span className="badge badge-warning">Pending</span>;
+    }
+    
+    return <span className="badge badge-success">Settled</span>;
+  };
 
-    return { total, settled, pending, totalAmount, approvedAmount };
-  }, [filteredClaims]);
+  const getFileBadge = (fileUrl: string | null, fileName: string) => {
+    if (!fileUrl) {
+      return <span className="badge badge-gray">No File</span>;
+    }
+    
+    const fileNameDisplay = fileName ? fileName.split('/').pop() || 'File' : 'File';
+    return (
+      <div className="flex items-center gap-1">
+        <span className="badge badge-blue">{fileNameDisplay}</span>
+        <button
+          onClick={() => window.open(fileUrl, '_blank')}
+          className="text-blue-600 hover:text-blue-900 transition-colors"
+          title="Download File"
+        >
+          <Download className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  };
+
+  const renderFilesColumn = (claim: Claim) => {
+    const files = [];
+    
+    if (claim.approval_letter) {
+      files.push({
+        name: 'Approval Letter',
+        url: typeof claim.approval_letter === 'string' ? claim.approval_letter : null,
+        type: 'approval_letter'
+      });
+    }
+    
+    if (claim.physical_file_upload) {
+      files.push({
+        name: 'POD Upload',
+        url: typeof claim.physical_file_upload === 'string' ? claim.physical_file_upload : null,
+        type: 'physical_file_upload'
+      });
+    }
+    
+    if (claim.query_on_claim) {
+      files.push({
+        name: 'Query on Claim',
+        url: typeof claim.query_on_claim === 'string' ? claim.query_on_claim : null,
+        type: 'query_on_claim'
+      });
+    }
+    
+    if (files.length === 0) {
+      return <span className="text-gray-400 text-sm">No files</span>;
+    }
+    
+    return (
+      <div className="space-y-1">
+        {files.map((file, index) => (
+          <div key={index} className="flex items-center gap-1">
+            {getFileBadge(file.url, file.name)}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -296,65 +522,6 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="stats-label">Total Claims</p>
-              <p className="stats-value">{summaryStats.total}</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <FileText className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="stats-label">Settled Claims</p>
-              <p className="stats-value">{summaryStats.settled}</p>
-              <div className="stats-trend stats-trend-up">
-                <TrendingUp className="w-4 h-4 mr-1" />
-                <span>{((summaryStats.settled / summaryStats.total) * 100).toFixed(1)}%</span>
-              </div>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="stats-label">Pending Claims</p>
-              <p className="stats-value">{summaryStats.pending}</p>
-              <div className="stats-trend stats-trend-down">
-                <TrendingDown className="w-4 h-4 mr-1" />
-                <span>{((summaryStats.pending / summaryStats.total) * 100).toFixed(1)}%</span>
-              </div>
-            </div>
-            <div className="p-3 bg-yellow-100 rounded-full">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="stats-label">Total Amount</p>
-              <p className="stats-value">₹{summaryStats.totalAmount.toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <BarChart3 className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Table Card */}
       <div className="card">
         {/* Header with actions */}
@@ -399,12 +566,14 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="btn btn-secondary"
+                className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Filters
-                {Object.values(filters).some(v => v) && (
-                  <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                {hasActiveFilters && (
+                  <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                    {Object.values(filters).filter(v => v && v !== '').length}
+                  </span>
                 )}
               </button>
               
@@ -417,157 +586,384 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Column Selector */}
-          {showColumnSelector && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Select Columns</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {columns.filter(col => col.key !== 'select' && col.key !== 'actions').map(column => (
-                  <label key={column.key} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns.has(column.key)}
-                      onChange={(e) => {
-                        const newVisible = new Set(visibleColumns);
-                        if (e.target.checked) {
-                          newVisible.add(column.key);
-                        } else {
-                          newVisible.delete(column.key);
-                        }
-                        setVisibleColumns(newVisible);
-                      }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{column.label}</span>
-                  </label>
-                ))}
+        {/* Filters Section */}
+        {showFilters && (
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-medium text-gray-900">Filters</h3>
+                {hasPendingFilters && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 border border-yellow-200">
+                    Pending
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-3">
+                {hasPendingFilters && (
+                  <button
+                    onClick={applyFilters}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                  >
+                    Go
+                  </button>
+                )}
+                {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                    className="text-sm text-red-600 hover:text-red-800 flex items-center"
+              >
+                    <X className="w-4 h-4 mr-1" />
+                Clear All
+              </button>
+                )}
               </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Patient Name Filter */}
+              <div>
+                <label className="block text-sm font-bold text-black mb-1">Patient Name</label>
+                  <input
+                    type="text"
+                  value={filters.patientName}
+                  onChange={(e) => handleFilterChange('patientName', e.target.value)}
+                  placeholder="Search by patient name..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-          {/* Filters */}
-          {showFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-900">Filters</h3>
-                <button
-                  onClick={clearFilters}
-                  className="btn btn-ghost"
-                >
-                  <FilterX className="w-4 h-4 mr-2" />
-                  Clear All
-                </button>
+              {/* Claim ID Filter */}
+              <div>
+                <label className="block text-sm font-bold text-black mb-1">Claim ID</label>
+                <input
+                  type="text"
+                  value={filters.claimId}
+                  onChange={(e) => handleFilterChange('claimId', e.target.value)}
+                  placeholder="Search by claim ID..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="form-label">Search</label>
-                  <div className="search-input">
-                    <Search className="search-input-icon" />
-                    <input
-                      type="text"
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                      placeholder="Patient name, Claim ID, UHID..."
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="form-label">TPA Name</label>
-                  <select
-                    value={filters.tpaName}
-                    onChange={(e) => handleFilterChange('tpaName', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="">All TPAs</option>
-                    {uniqueTpaNames.map(tpa => (
-                      <option key={tpa} value={tpa}>{tpa}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label">Parent Insurance</label>
-                  <select
-                    value={filters.parentInsurance}
-                    onChange={(e) => handleFilterChange('parentInsurance', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="">All Insurance Companies</option>
-                    {uniqueInsuranceCompanies.map(company => (
-                      <option key={company} value={company}>{company}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label">Settlement Status</label>
-                  <select
-                    value={filters.settlementStatus}
-                    onChange={(e) => handleFilterChange('settlementStatus', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="">All</option>
-                    <option value="settled">Settled</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label">Date From</label>
-                  <input
-                    type="date"
-                    value={filters.dateFrom}
-                    onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Date To</label>
-                  <input
-                    type="date"
-                    value={filters.dateTo}
-                    onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">File Status</label>
-                  <select
-                    value={filters.fileStatus}
-                    onChange={(e) => handleFilterChange('fileStatus', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="">All</option>
-                    <option value="pending">Pending</option>
-                    <option value="dispatched">Dispatched</option>
-                    <option value="received">Received</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label">Amount Range</label>
-                  <select
-                    value={filters.amountRange}
-                    onChange={(e) => handleFilterChange('amountRange', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="">All</option>
-                    <option value="0-50000">₹0 - ₹50,000</option>
-                    <option value="50000-100000">₹50,000 - ₹1,00,000</option>
-                    <option value="100000-500000">₹1,00,000 - ₹5,00,000</option>
-                    <option value="500000+">₹5,00,000+</option>
-                  </select>
-                </div>
+              {/* TPA Name Filter */}
+              <div>
+                <label className="block text-sm font-bold text-black mb-1">TPA Provider</label>
+                <input
+                  type="text"
+                  value={filters.tpaName}
+                  onChange={(e) => handleFilterChange('tpaName', e.target.value)}
+                  placeholder="Search by TPA provider..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
+
+              {/* Insurance Company Filter */}
+              <div>
+                <label className="block text-sm font-bold text-black mb-1">Insurance Company</label>
+                <input
+                  type="text"
+                  value={filters.parentInsurance}
+                  onChange={(e) => handleFilterChange('parentInsurance', e.target.value)}
+                  placeholder="Search by insurance company..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Settlement Status Filter */}
+              <div>
+                <label className="block text-sm font-bold text-black mb-1">Settlement Status</label>
+                <input
+                  type="text"
+                  value={settlementStatusInput}
+                  onChange={(e) => handleSettlementStatusChange(e.target.value)}
+                  placeholder="Enter status (settled or pending)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {showSettlementSuggestion && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800 font-medium mb-1">Suggested statuses:</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSettlementStatusChange('settled')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        settled
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSettlementStatusChange('pending')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        pending
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* File Status Filter */}
+              <div>
+                <label className="block text-sm font-bold text-black mb-1">File Status</label>
+                <input
+                  type="text"
+                  value={fileStatusInput}
+                  onChange={(e) => handleFileStatusChange(e.target.value)}
+                  placeholder="Enter file status (pending, dispatched, received, not_required)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {showFileStatusSuggestion && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800 font-medium mb-1">Suggested file statuses:</p>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('pending')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        pending
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('dispatched')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        dispatched
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('received')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        received
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileStatusChange('not_required')}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        not_required
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Admission Date Range Filter */}
+              <div>
+                <DateInput
+                  label="Admission Date From"
+                  value={filters.admissionDateFrom}
+                  onChange={(value) => handleFilterChange('admissionDateFrom', value)}
+                  className="mb-2"
+                />
+              </div>
+
+              <div>
+                <DateInput
+                  label="Admission Date To"
+                  value={filters.admissionDateTo}
+                  onChange={(value) => handleFilterChange('admissionDateTo', value)}
+                  className="mb-2"
+                />
+              </div>
+
+              {/* Discharge Date Range Filter */}
+              <div>
+                <DateInput
+                  label="Discharge Date From"
+                  value={filters.dischargeDateFrom}
+                  onChange={(value) => handleFilterChange('dischargeDateFrom', value)}
+                  className="mb-2"
+                />
+              </div>
+
+              <div>
+                <DateInput
+                  label="Discharge Date To"
+                  value={filters.dischargeDateTo}
+                  onChange={(value) => handleFilterChange('dischargeDateTo', value)}
+                  className="mb-2"
+                />
+              </div>
+              </div>
+
+            {/* Active Filter Pills */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {appliedFilters.patientName && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">
+                    Patient: {appliedFilters.patientName}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('patientName', '');
+                        setAppliedFilters(prev => ({ ...prev, patientName: '' }));
+                      }}
+                      className="ml-1 text-indigo-600 hover:text-indigo-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.claimId && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-pink-100 text-pink-800">
+                    Claim ID: {appliedFilters.claimId}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('claimId', '');
+                        setAppliedFilters(prev => ({ ...prev, claimId: '' }));
+                      }}
+                      className="ml-1 text-pink-600 hover:text-pink-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.tpaName && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                    TPA: {appliedFilters.tpaName}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('tpaName', '');
+                        setAppliedFilters(prev => ({ ...prev, tpaName: '' }));
+                      }}
+                      className="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.parentInsurance && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                    Insurance: {appliedFilters.parentInsurance}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('parentInsurance', '');
+                        setAppliedFilters(prev => ({ ...prev, parentInsurance: '' }));
+                      }}
+                      className="ml-1 text-green-600 hover:text-green-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.settlementStatus && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
+                    Status: {appliedFilters.settlementStatus === 'settled' ? 'Settled' : 'Pending'}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('settlementStatus', '');
+                        setAppliedFilters(prev => ({ ...prev, settlementStatus: '' }));
+                      }}
+                      className="ml-1 text-orange-600 hover:text-orange-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.fileStatus && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                    File: {appliedFilters.fileStatus}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('fileStatus', '');
+                        setAppliedFilters(prev => ({ ...prev, fileStatus: '' }));
+                      }}
+                      className="ml-1 text-purple-600 hover:text-purple-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.admissionDateFrom && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-800">
+                    Admission From: {appliedFilters.admissionDateFrom}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('admissionDateFrom', '');
+                        setAppliedFilters(prev => ({ ...prev, admissionDateFrom: '' }));
+                      }}
+                      className="ml-1 text-teal-600 hover:text-teal-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.admissionDateTo && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-teal-100 text-teal-800">
+                    Admission To: {appliedFilters.admissionDateTo}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('admissionDateTo', '');
+                        setAppliedFilters(prev => ({ ...prev, admissionDateTo: '' }));
+                      }}
+                      className="ml-1 text-teal-600 hover:text-teal-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.dischargeDateFrom && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-cyan-100 text-cyan-800">
+                    Discharge From: {appliedFilters.dischargeDateFrom}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('dischargeDateFrom', '');
+                        setAppliedFilters(prev => ({ ...prev, dischargeDateFrom: '' }));
+                      }}
+                      className="ml-1 text-cyan-600 hover:text-cyan-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {appliedFilters.dischargeDateTo && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-cyan-100 text-cyan-800">
+                    Discharge To: {appliedFilters.dischargeDateTo}
+                    <button
+                      onClick={() => {
+                        handleFilterChange('dischargeDateTo', '');
+                        setAppliedFilters(prev => ({ ...prev, dischargeDateTo: '' }));
+                      }}
+                      className="ml-1 text-cyan-600 hover:text-cyan-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Column Selector Section */}
+        {showColumnSelector && (
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Select Columns</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {columns.filter(col => col.key !== 'select' && col.key !== 'actions').map(column => (
+                <label key={column.key} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns.has(column.key)}
+                    onChange={(e) => {
+                      const newVisible = new Set(visibleColumns);
+                      if (e.target.checked) {
+                        newVisible.add(column.key);
+                      } else {
+                        newVisible.delete(column.key);
+                      }
+                      setVisibleColumns(newVisible);
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{column.label}</span>
+                </label>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -592,11 +988,15 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                     onClick={() => column.sortable && handleSort(column.key)}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>{column.label}</span>
+                      <span className="font-bold text-black">{column.label}</span>
                       {column.sortable && sortConfig?.key === column.key && (
                         sortConfig.direction === 'asc' ? 
-                          <SortAsc className="w-4 h-4" /> : 
-                          <SortDesc className="w-4 h-4" />
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg> : 
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
                       )}
                     </div>
                   </th>
@@ -621,112 +1021,116 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                     <td className="table-cell">{claim.month}</td>
                   )}
                   
-                  {visibleColumns.has('admissionDate') && (
-                    <td className="table-cell">{formatDate(claim.dateOfAdmission)}</td>
+                  {visibleColumns.has('date_of_admission') && (
+                    <td className="table-cell">{formatDate(claim.date_of_admission)}</td>
                   )}
                   
-                  {visibleColumns.has('dischargeDate') && (
-                    <td className="table-cell">{formatDate(claim.dateOfDischarge)}</td>
+                  {visibleColumns.has('date_of_discharge') && (
+                    <td className="table-cell">{formatDate(claim.date_of_discharge)}</td>
                   )}
                   
-                  {visibleColumns.has('tpaName') && (
-                    <td className="table-cell">{claim.tpaName}</td>
+                  {visibleColumns.has('tpa_name') && (
+                    <td className="table-cell">{claim.tpa_name}</td>
                   )}
                   
-                  {visibleColumns.has('parentInsurance') && (
-                    <td className="table-cell">{claim.parentInsurance}</td>
+                  {visibleColumns.has('parent_insurance') && (
+                    <td className="table-cell">{claim.parent_insurance}</td>
                   )}
                   
-                  {visibleColumns.has('claimId') && (
-                    <td className="table-cell font-medium text-blue-600">{claim.claimId}</td>
+                  {visibleColumns.has('claim_id') && (
+                    <td className="table-cell font-medium text-blue-600">{claim.claim_id}</td>
                   )}
                   
-                  {visibleColumns.has('uhidIpNo') && (
-                    <td className="table-cell">{claim.uhidIpNo}</td>
+                  {visibleColumns.has('uhid_ip_no') && (
+                    <td className="table-cell">{claim.uhid_ip_no}</td>
                   )}
                   
-                  {visibleColumns.has('patientName') && (
-                    <td className="table-cell font-medium">{claim.patientName}</td>
+                  {visibleColumns.has('patient_name') && (
+                    <td className="table-cell font-medium">{claim.patient_name}</td>
                   )}
                   
-                  {visibleColumns.has('billAmount') && (
-                    <td className="table-cell">{formatCurrency(claim.billAmount)}</td>
+                  {visibleColumns.has('bill_amount') && (
+                    <td className="table-cell">{formatCurrency(claim.bill_amount || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('approvedAmount') && (
-                    <td className="table-cell">{formatCurrency(claim.approvedAmount)}</td>
+                  {visibleColumns.has('approved_amount') && (
+                    <td className="table-cell">{formatCurrency(claim.approved_amount || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('mouDiscount') && (
-                    <td className="table-cell">{formatCurrency(claim.mouDiscount)}</td>
+                  {visibleColumns.has('mou_discount') && (
+                    <td className="table-cell">{formatCurrency(claim.mou_discount || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('coPay') && (
-                    <td className="table-cell">{formatCurrency(claim.coPay)}</td>
+                  {visibleColumns.has('co_pay') && (
+                    <td className="table-cell">{formatCurrency(claim.co_pay || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('consumableDeduction') && (
-                    <td className="table-cell">{formatCurrency(claim.consumableDeduction)}</td>
+                  {visibleColumns.has('consumable_deduction') && (
+                    <td className="table-cell">{formatCurrency(claim.consumable_deduction || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('hospitalDiscount') && (
-                    <td className="table-cell">{formatCurrency(claim.hospitalDiscount)}</td>
+                  {visibleColumns.has('hospital_discount') && (
+                    <td className="table-cell">{formatCurrency(claim.hospital_discount || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('paidByPatient') && (
-                    <td className="table-cell">{formatCurrency(claim.paidByPatient)}</td>
+                  {visibleColumns.has('paid_by_patient') && (
+                    <td className="table-cell">{formatCurrency(claim.paid_by_patient || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('hospitalDiscountAuthority') && (
-                    <td className="table-cell">{claim.hospitalDiscountAuthority}</td>
+                  {visibleColumns.has('hospital_discount_authority') && (
+                    <td className="table-cell">{claim.hospital_discount_authority}</td>
                   )}
                   
-                  {visibleColumns.has('otherDeductions') && (
-                    <td className="table-cell">{formatCurrency(claim.otherDeductions)}</td>
+                  {visibleColumns.has('other_deductions') && (
+                    <td className="table-cell">{formatCurrency(claim.other_deductions || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('physicalFileDispatch') && (
-                    <td className="table-cell">{getFileStatusBadge(claim.physicalFileDispatch)}</td>
+                  {visibleColumns.has('physical_file_dispatch') && (
+                    <td className="table-cell">{getFileStatusBadge(claim.physical_file_dispatch)}</td>
                   )}
                   
-                  {visibleColumns.has('dateOfUploadDispatch') && (
-                    <td className="table-cell">{formatDate(claim.dateOfUploadDispatch)}</td>
+                  {visibleColumns.has('query_reply_date') && (
+                    <td className="table-cell">{formatDate(claim.query_reply_date)}</td>
                   )}
                   
-                  {visibleColumns.has('queryReplyDate') && (
-                    <td className="table-cell">{formatDate(claim.queryReplyDate)}</td>
+                  {visibleColumns.has('settlement_status') && (
+                    <td className="table-cell">{getSettlementStatusBadge(claim.settlement_date)}</td>
                   )}
                   
-                  {visibleColumns.has('settlementDate') && (
-                    <td className="table-cell">{formatDate(claim.settlementDate)}</td>
+                  {visibleColumns.has('settlement_date') && (
+                    <td className="table-cell">{formatDate(claim.settlement_date)}</td>
                   )}
                   
                   {visibleColumns.has('tds') && (
-                    <td className="table-cell">{formatCurrency(claim.tds)}</td>
+                    <td className="table-cell">{formatCurrency(claim.tds || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('amountSettledInAccount') && (
-                    <td className="table-cell">{formatCurrency(claim.amountSettledInAccount)}</td>
+                  {visibleColumns.has('amount_settled_in_ac') && (
+                    <td className="table-cell">{formatCurrency(claim.amount_settled_in_ac || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('totalSettledAmount') && (
-                    <td className="table-cell">{formatCurrency(claim.totalSettledAmount)}</td>
+                  {visibleColumns.has('total_settled_amount') && (
+                    <td className="table-cell">{formatCurrency(claim.total_settled_amount || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('differenceApprovedSettled') && (
-                    <td className="table-cell">{formatCurrency(claim.differenceApprovedSettled)}</td>
+                  {visibleColumns.has('difference_amount') && (
+                    <td className="table-cell">{formatCurrency(claim.difference_amount || 0)}</td>
                   )}
                   
-                  {visibleColumns.has('reasonForLessSettlement') && (
-                    <td className="table-cell">{claim.reasonForLessSettlement || 'N/A'}</td>
+                  {visibleColumns.has('reason_less_settlement') && (
+                    <td className="table-cell">{claim.reason_less_settlement || 'N/A'}</td>
                   )}
                   
-                  {visibleColumns.has('claimSettledOnSoftware') && (
-                    <td className="table-cell">{getVerificationBadge(claim.claimSettledOnSoftware)}</td>
+                  {visibleColumns.has('claim_settled_software') && (
+                    <td className="table-cell">{getVerificationBadge(claim.claim_settled_software)}</td>
                   )}
                   
-                  {visibleColumns.has('receiptAmountVerification') && (
-                    <td className="table-cell">{getVerificationBadge(claim.receiptAmountVerification)}</td>
+                  {visibleColumns.has('receipt_verified_bank') && (
+                    <td className="table-cell">{getVerificationBadge(claim.receipt_verified_bank)}</td>
+                  )}
+                  
+                  {visibleColumns.has('files') && (
+                    <td className="table-cell">{renderFilesColumn(claim)}</td>
                   )}
                   
                   {visibleColumns.has('actions') && (
@@ -740,7 +1144,13 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => onEdit(claim)}
+                          onClick={async () => {
+                            try {
+                              await onEdit(claim);
+                            } catch (error) {
+                              console.error('Failed to edit claim:', error);
+                            }
+                          }}
                           className="text-indigo-600 hover:text-indigo-900 transition-colors"
                           title="Edit Claim"
                         >
@@ -776,15 +1186,22 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {effectiveTotalPages > 1 && (
           <div className="pagination">
             <div className="text-sm text-gray-700">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredClaims.length)} of {filteredClaims.length} results
+              {useServerPagination ? (
+                // Server-side pagination: show current page info
+                `Showing ${paginatedClaims.length} claims on page ${effectiveCurrentPage} of ${effectiveTotalPages}`
+              ) : (
+                // Client-side pagination: we have all the data
+                `Showing ${((effectiveCurrentPage - 1) * itemsPerPage) + 1} to ${Math.min(effectiveCurrentPage * itemsPerPage, filteredClaims.length)} of ${filteredClaims.length} results`
+              )}
             </div>
+
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
+                onClick={() => setEffectiveCurrentPage(Math.max(effectiveCurrentPage - 1, 1))}
+                disabled={effectiveCurrentPage === 1}
                 className="pagination-button"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
@@ -792,24 +1209,24 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               </button>
               
               <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                {Array.from({ length: Math.min(5, effectiveTotalPages) }, (_, i) => {
                   let pageNum;
-                  if (totalPages <= 5) {
+                  if (effectiveTotalPages <= 5) {
                     pageNum = i + 1;
-                  } else if (currentPage <= 3) {
+                  } else if (effectiveCurrentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
+                  } else if (effectiveCurrentPage >= effectiveTotalPages - 2) {
+                    pageNum = effectiveTotalPages - 4 + i;
                   } else {
-                    pageNum = currentPage - 2 + i;
+                    pageNum = effectiveCurrentPage - 2 + i;
                   }
                   
                   return (
                     <button
                       key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
+                      onClick={() => setEffectiveCurrentPage(pageNum)}
                       className={`pagination-page ${
-                        currentPage === pageNum
+                        effectiveCurrentPage === pageNum
                           ? 'pagination-page-active'
                           : 'pagination-page-inactive'
                       }`}
@@ -821,8 +1238,8 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
               </div>
 
               <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
+                onClick={() => setEffectiveCurrentPage(Math.min(effectiveCurrentPage + 1, effectiveTotalPages))}
+                disabled={effectiveCurrentPage === effectiveTotalPages}
                 className="pagination-button"
               >
                 Next
