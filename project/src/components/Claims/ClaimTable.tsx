@@ -117,6 +117,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     { key: 'claim_id', label: 'Claim ID', width: 'w-32', sortable: true },
     { key: 'uhid_ip_no', label: 'UHID/IP No', width: 'w-32', sortable: true },
     { key: 'patient_name', label: 'Patient Name', width: 'w-40', sortable: true },
+    { key: 'utr_number', label: 'UTR Number', width: 'w-32', sortable: true },
     { key: 'bill_amount', label: 'Bill Amount', width: 'w-32', sortable: true },
     { key: 'approved_amount', label: 'Approved Amount', width: 'w-36', sortable: true },
     { key: 'mou_discount', label: 'MOU Discount', width: 'w-32', sortable: true },
@@ -134,7 +135,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
     { key: 'tds', label: 'TDS', width: 'w-24', sortable: true },
     { key: 'amount_settled_in_ac', label: 'Amount Settled in A/C', width: 'w-44', sortable: true },
     { key: 'total_settled_amount', label: 'Total Settled Amount', width: 'w-40', sortable: true },
-    { key: 'difference_amount', label: 'Difference (Approved vs Settled)', width: 'w-48', sortable: true },
+            { key: 'difference_amount', label: 'Difference (Bill - (Settled + TDS + Patient Paid + MOU Discount))', width: 'w-64', sortable: true },
     { key: 'reason_less_settlement', label: 'Reason for Less Settlement', width: 'w-44', sortable: true },
     { key: 'claim_settled_software', label: 'Claim Settled on Software', width: 'w-44', sortable: true },
     { key: 'receipt_verified_bank', label: 'Receipt Amount Verification', width: 'w-48', sortable: true },
@@ -152,7 +153,8 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
         return (
           (claim.patient_name && claim.patient_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (claim.claim_id && claim.claim_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (claim.uhid_ip_no && claim.uhid_ip_no.toLowerCase().includes(searchTerm.toLowerCase()))
+          (claim.uhid_ip_no && claim.uhid_ip_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (claim.utr_number && claim.utr_number.toLowerCase().includes(searchTerm.toLowerCase()))
         );
       });
     }
@@ -1047,6 +1049,10 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
                   
                   {visibleColumns.has('patient_name') && (
                     <td className="table-cell font-medium">{claim.patient_name}</td>
+                  )}
+                  
+                  {visibleColumns.has('utr_number') && (
+                    <td className="table-cell font-medium text-green-600">{claim.utr_number || 'N/A'}</td>
                   )}
                   
                   {visibleColumns.has('bill_amount') && (

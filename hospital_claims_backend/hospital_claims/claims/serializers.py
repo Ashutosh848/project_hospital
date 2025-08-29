@@ -12,9 +12,10 @@ class ClaimSerializer(serializers.ModelSerializer):
     settlement_date = serializers.DateField(required=False, allow_null=True)
     tpa_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     parent_insurance = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    claim_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    uhid_ip_no = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    patient_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    claim_id = serializers.CharField(required=True, allow_blank=False, allow_null=False)
+    uhid_ip_no = serializers.CharField(required=True, allow_blank=False, allow_null=False)
+    patient_name = serializers.CharField(required=True, allow_blank=False, allow_null=False)
+    utr_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     bill_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     approved_amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     mou_discount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
@@ -80,7 +81,7 @@ class ClaimSerializer(serializers.ModelSerializer):
             'consumable_deduction', 'hospital_discount', 'paid_by_patient', 
             'hospital_discount_authority', 'other_deductions', 'tds', 
             'amount_settled_in_ac', 'total_settled_amount', 'reason_less_settlement',
-            'tpa_name', 'parent_insurance', 'uhid_ip_no', 'patient_name'
+            'tpa_name', 'parent_insurance', 'uhid_ip_no', 'patient_name', 'utr_number'
         ]
         for field in nullable_fields:
             if field in data and (data[field] == '' or data[field] == 'null' or data[field] == 'undefined'):
@@ -107,5 +108,5 @@ class ClaimListSerializer(serializers.ModelSerializer):
             'id', 'claim_id', 'patient_name', 'tpa_name', 'parent_insurance',
             'date_of_admission', 'date_of_discharge', 'bill_amount', 
             'approved_amount', 'total_settled_amount', 'difference_amount',
-            'settlement_date', 'month', 'created_at'
+            'settlement_date', 'month', 'created_at', 'utr_number'
         ]

@@ -17,6 +17,7 @@ export interface Claim {
   claim_id: string;
   uhid_ip_no: string;
   patient_name: string;
+  utr_number: string;
   bill_amount: number;
   approved_amount: number;
   mou_discount: number;
@@ -52,6 +53,7 @@ export interface ClaimFormData {
   claim_id?: string;
   uhid_ip_no?: string;
   patient_name?: string;
+  utr_number?: string;
   bill_amount?: number;
   approved_amount?: number;
   mou_discount?: number;

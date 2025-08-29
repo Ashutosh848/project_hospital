@@ -13,9 +13,10 @@ const schema = yup.object<ClaimFormData>({
   date_of_discharge: yup.string().nullable().optional(),
   tpa_name: yup.string().nullable().optional(),
   parent_insurance: yup.string().nullable().optional(),
-  claim_id: yup.string().nullable().optional(),
-  uhid_ip_no: yup.string().nullable().optional(),
-  patient_name: yup.string().nullable().optional(),
+  claim_id: yup.string().required('Claim ID is required'),
+  uhid_ip_no: yup.string().required('UHID/IP No is required'),
+  patient_name: yup.string().required('Patient Name is required'),
+  utr_number: yup.string().nullable().optional(),
   bill_amount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Bill amount cannot be negative').optional(),
   approved_amount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'Approved amount cannot be negative').optional(),
   mou_discount: yup.number().nullable().transform((value) => (isNaN(value) || value === '' || value === null || value === undefined) ? null : value).min(0, 'MOU discount cannot be negative').optional(),
@@ -159,6 +160,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
         claim_id: initialData.claim_id || '',
         uhid_ip_no: initialData.uhid_ip_no || '',
         patient_name: initialData.patient_name || '',
+        utr_number: initialData.utr_number || '',
         bill_amount: initialData.bill_amount || undefined,
         approved_amount: initialData.approved_amount || undefined,
         mou_discount: initialData.mou_discount || undefined,
@@ -188,6 +190,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
         claim_id: '',
         uhid_ip_no: '',
         patient_name: '',
+        utr_number: '',
         bill_amount: undefined,
         approved_amount: undefined,
         mou_discount: undefined,
@@ -210,29 +213,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     }
   }, [initialData, reset]);
 
-  // Auto-calculate fields
-  const approvedAmount = watch('approved_amount');
-  const tds = watch('tds');
-  const otherDeductions = watch('other_deductions');
-
-  useEffect(() => {
-    if (approvedAmount && tds !== undefined && otherDeductions !== undefined) {
-      // Validate that approved amount is reasonable (less than 1 billion)
-      if (approvedAmount > 1000000000) {
-        console.warn('Approved amount seems too large:', approvedAmount);
-        return;
-      }
-      
-      const totalSettled = approvedAmount - (tds || 0) - (otherDeductions || 0);
-      
-      // Ensure the result is reasonable
-      if (totalSettled >= 0 && totalSettled <= 1000000000) {
-        setValue('total_settled_amount', totalSettled);
-        setValue('amount_settled_in_ac', totalSettled);
-      }
-      // Note: difference_amount is calculated by backend
-    }
-  }, [approvedAmount, tds, otherDeductions, setValue]);
+  // Note: total_settled_amount is now manually entered, not auto-calculated
 
   const handleFormSubmit = (data: any) => {
     // Create FormData and add all form fields
@@ -311,19 +292,8 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
       }
     }
     
-    // Calculate difference amount only if we have valid amounts
-    if (data.approved_amount && data.total_settled_amount) {
-      // Validate amounts are reasonable before calculating
-      if (data.approved_amount <= 1000000000 && data.total_settled_amount <= 1000000000) {
-        const difference = (data.approved_amount || 0) - (data.total_settled_amount || 0);
-        formData.append('difference_amount', String(difference));
-      } else {
-        console.warn('Amounts too large for calculation:', {
-          approved_amount: data.approved_amount,
-          total_settled_amount: data.total_settled_amount
-        });
-      }
-    }
+    // Note: difference_amount is calculated by backend with formula:
+    // bill_amount - total_settled_amount + tds + patient_paid + mou_discount
     
     // Handle timestamps - preserve original created_at, update updated_at
     if (initialData?.created_at) {
@@ -414,7 +384,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Claim ID
+                      Claim ID <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -428,7 +398,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
-                      UHID/IP No
+                      UHID/IP No <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -442,7 +412,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
-                      Patient Name (Optional)
+                      Patient Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -451,6 +421,21 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     />
                     {errors.patient_name && (
                       <p className="mt-1 text-sm text-red-600">{errors.patient_name.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-base font-semibold text-gray-900 mb-2">
+                      UTR Number
+                    </label>
+                    <input
+                      type="text"
+                      {...register('utr_number')}
+                      placeholder="Enter UTR number"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    {errors.utr_number && (
+                      <p className="mt-1 text-sm text-red-600">{errors.utr_number.message}</p>
                     )}
                   </div>
                 </div>
@@ -616,9 +601,11 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                       type="number"
                       step="0.01"
                       {...register('total_settled_amount', { valueAsNumber: true })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      readOnly
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                    {errors.total_settled_amount && (
+                      <p className="mt-1 text-sm text-red-600">{errors.total_settled_amount.message}</p>
+                    )}
                   </div>
                 </div>
 

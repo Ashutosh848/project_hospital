@@ -120,13 +120,18 @@ def dashboard_summary(request):
         pending_claims = claims.filter(settlement_date__isnull=True).count()
         
         # Average processing time (for settled claims)
-        settled_claims_qs = claims.exclude(settlement_date__isnull=True)
+        settled_claims_qs = claims.exclude(settlement_date__isnull=True).exclude(date_of_discharge__isnull=True)
         avg_processing_days = 0
         if settled_claims_qs.exists():
             processing_times = []
             for claim in settled_claims_qs:
-                days = (claim.settlement_date - claim.date_of_discharge).days
-                processing_times.append(days)
+                try:
+                    days = (claim.settlement_date - claim.date_of_discharge).days
+                    if days >= 0:  # Only include valid processing times
+                        processing_times.append(days)
+                except (TypeError, AttributeError):
+                    # Skip claims with invalid dates
+                    continue
             avg_processing_days = sum(processing_times) / len(processing_times) if processing_times else 0
         
         summary_data = {
@@ -151,9 +156,10 @@ def dashboard_summary(request):
 def dashboard_monthwise(request):
     """Monthly statistics for charts"""
     try:
-        # Group claims by month
+        # Group claims by month, excluding null months
         monthly_data = (
             Claim.objects
+            .exclude(month__isnull=True)  # Exclude claims with null month
             .values('month')
             .annotate(
                 claim_count=Count('id'),
@@ -168,19 +174,25 @@ def dashboard_monthwise(request):
         # Format data for frontend charts
         chart_data = []
         for item in monthly_data:
-            # Convert month string to readable format
-            year, month_num = item['month'].split('-')
-            month_name = calendar.month_name[int(month_num)]
-            
-            chart_data.append({
-                'month': f"{month_name} {year}",
-                'month_code': item['month'],
-                'claim_count': item['claim_count'],
-                'total_bill': float(item['total_bill'] or 0),
-                'total_approved': float(item['total_approved'] or 0),
-                'total_settled': float(item['total_settled'] or 0),
-                'total_tds': float(item['total_tds'] or 0),
-            })
+            try:
+                # Convert month string to readable format
+                if item['month'] and '-' in item['month']:
+                    year, month_num = item['month'].split('-')
+                    month_name = calendar.month_name[int(month_num)]
+                    
+                    chart_data.append({
+                        'month': f"{month_name} {year}",
+                        'month_code': item['month'],
+                        'claim_count': item['claim_count'],
+                        'total_bill': float(item['total_bill'] or 0),
+                        'total_approved': float(item['total_approved'] or 0),
+                        'total_settled': float(item['total_settled'] or 0),
+                        'total_tds': float(item['total_tds'] or 0),
+                    })
+            except (ValueError, TypeError, AttributeError) as e:
+                # Skip invalid month data
+                print(f"Skipping invalid month data: {item['month']}, error: {e}")
+                continue
         
         # Format for frontend ChartData[] format
         formatted_data = []
@@ -207,6 +219,8 @@ def dashboard_companywise(request):
         # TPA wise data
         tpa_data = (
             Claim.objects
+            .exclude(tpa_name__isnull=True)
+            .exclude(tpa_name='')
             .values('tpa_name')
             .annotate(
                 claim_count=Count('id'),
@@ -219,6 +233,8 @@ def dashboard_companywise(request):
         # Insurance wise data
         insurance_data = (
             Claim.objects
+            .exclude(parent_insurance__isnull=True)
+            .exclude(parent_insurance='')
             .values('parent_insurance')
             .annotate(
                 claim_count=Count('id'),
@@ -232,7 +248,7 @@ def dashboard_companywise(request):
         tpa_chart = []
         for item in tpa_data:
             tpa_chart.append({
-                'name': item['tpa_name'],
+                'name': item['tpa_name'] or 'Unknown TPA',
                 'value': float(item['total_approved'] or 0),
                 'claim_count': item['claim_count'],
                 'total_settled': float(item['total_settled'] or 0),
@@ -241,7 +257,7 @@ def dashboard_companywise(request):
         insurance_chart = []
         for item in insurance_data:
             insurance_chart.append({
-                'name': item['parent_insurance'],
+                'name': item['parent_insurance'] or 'Unknown Insurance',
                 'value': float(item['total_approved'] or 0),
                 'claim_count': item['claim_count'],
                 'total_settled': float(item['total_settled'] or 0),
