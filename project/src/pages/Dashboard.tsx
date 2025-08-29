@@ -72,15 +72,15 @@ export const Dashboard: React.FC = () => {
   // Load dashboard data
   useEffect(() => {
     const loadDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Build query parameters for filtering
-        const params = new URLSearchParams();
-        if (appliedFilters.startDate) params.append('start_date', appliedFilters.startDate);
-        if (appliedFilters.endDate) params.append('end_date', appliedFilters.endDate);
-        if (appliedFilters.company) params.append('company', appliedFilters.company);
-        if (appliedFilters.tpa) params.append('tpa', appliedFilters.tpa);
+              try {
+          setIsLoading(true);
+          
+          // Build query parameters for filtering
+          const params = new URLSearchParams();
+          if (appliedFilters.startDate) params.append('start_date', appliedFilters.startDate);
+          if (appliedFilters.endDate) params.append('end_date', appliedFilters.endDate);
+          if (appliedFilters.company) params.append('company', appliedFilters.company);
+          if (appliedFilters.tpa) params.append('tpa', appliedFilters.tpa);
         
         const [statsData, monthlyDataData, companyDataData] = await Promise.all([
           claimsService.getDashboardStats(params.toString()),
@@ -89,10 +89,21 @@ export const Dashboard: React.FC = () => {
         ]);
         
         setStats(statsData);
-        setMonthlyData(monthlyDataData);
-        setCompanyData(companyDataData);
+        setMonthlyData(monthlyDataData || []);
+        setCompanyData(companyDataData || []);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
+        // Set default values on error
+        setStats({
+          totalBillAmount: 0,
+          totalApprovedAmount: 0,
+          totalTds: 0,
+          totalRejections: 0,
+          totalConsumables: 0,
+          totalPaidByPatients: 0
+        });
+        setMonthlyData([]);
+        setCompanyData([]);
       } finally {
         setIsLoading(false);
       }
@@ -240,8 +251,21 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="filter-panel">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Dashboard Content */}
+      {!isLoading && (
+        <>
+          {/* Filters */}
+          <div className="filter-panel">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900">Filters</h3>
           <div className="flex items-center gap-2">
@@ -431,43 +455,54 @@ export const Dashboard: React.FC = () => {
           {/* Monthly Claims Chart */}
           <div className="chart-container">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Monthly Claims Trend</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value: any) => [`₹${parseInt(value).toLocaleString()}`, 'Amount']}
-                  labelStyle={{ color: '#374151' }}
-                />
-                <Area type="monotone" dataKey="value" fill="#dbeafe" stroke="#3b82f6" strokeWidth={2} />
-                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            {monthlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value: any) => [`₹${parseInt(value).toLocaleString()}`, 'Amount']}
+                    labelStyle={{ color: '#374151' }}
+                  />
+                  <Bar dataKey="value" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500">
+                <p>No monthly data available</p>
+              </div>
+            )}
           </div>
 
           {/* Company-wise Claims Chart */}
           <div className="chart-container">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Claims by Insurance Company</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={companyData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {companyData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {companyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={companyData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {companyData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500">
+                <p>No company data available</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -477,30 +512,42 @@ export const Dashboard: React.FC = () => {
           {/* Performance Trends */}
           <div className="chart-container">
             <h3 className="text-lg font-medium text-gray-900 mb-4">6-Month Performance Trends</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="claims" stackId="1" stroke="#3b82f6" fill="#3b82f6" />
-                <Area type="monotone" dataKey="settled" stackId="1" stroke="#10b981" fill="#10b981" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {performanceData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={performanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="claims" stackId="1" stroke="#3b82f6" fill="#3b82f6" />
+                  <Area type="monotone" dataKey="settled" stackId="1" stroke="#10b981" fill="#10b981" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500">
+                <p>No performance data available</p>
+              </div>
+            )}
           </div>
 
           {/* TPA Performance */}
           <div className="chart-container">
             <h3 className="text-lg font-medium text-gray-900 mb-4">TPA Performance Analysis</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={tpaPerformanceData.slice(0, 8)}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="tpa" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="settlementRate" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
+            {tpaPerformanceData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={tpaPerformanceData.slice(0, 8)}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="tpa" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="settlementRate" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500">
+                <p>No TPA data available</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -654,6 +701,8 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

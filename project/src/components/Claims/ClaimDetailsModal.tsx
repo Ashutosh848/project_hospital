@@ -80,6 +80,7 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                   <div className="space-y-2">
                     <InfoRow icon={User} label="Patient Name" value={claim.patient_name} />
                     <InfoRow icon={FileText} label="UHID/IP No" value={claim.uhid_ip_no} />
+                    <InfoRow icon={FileText} label="UTR Number" value={claim.utr_number || 'N/A'} />
                     <InfoRow icon={Calendar} label="Date of Admission" value={claim.date_of_admission ? new Date(claim.date_of_admission).toLocaleDateString() : 'N/A'} />
                     <InfoRow icon={Calendar} label="Date of Discharge" value={claim.date_of_discharge ? new Date(claim.date_of_discharge).toLocaleDateString() : 'N/A'} />
                   </div>
@@ -127,7 +128,7 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                     <InfoRow icon={DollarSign} label="Other Deductions" value={claim.other_deductions} isAmount />
                     <InfoRow icon={DollarSign} label="Amount Settled in A/C" value={claim.amount_settled_in_ac} isAmount />
                     <InfoRow icon={DollarSign} label="Total Settled Amount" value={claim.total_settled_amount} isAmount />
-                    <InfoRow icon={DollarSign} label="Difference (Approved vs Settled)" value={claim.difference_amount} isAmount />
+                    <InfoRow icon={DollarSign} label="Difference (Bill - (Settled + TDS + Patient Paid + MOU Discount))" value={claim.difference_amount} isAmount />
                     <InfoRow icon={Calendar} label="Settlement Date" value={claim.settlement_date && claim.settlement_date.trim() !== '' ? new Date(claim.settlement_date).toLocaleDateString() : 'N/A'} />
                   </div>
                 </div>

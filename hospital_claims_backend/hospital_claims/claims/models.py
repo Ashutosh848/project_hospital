@@ -17,7 +17,7 @@ class Claim(models.Model):
     
     # Auto-generated fields
     id = models.AutoField(primary_key=True)
-    month = models.CharField(max_length=7, editable=False)  # YYYY-MM format, auto from discharge date
+    month = models.CharField(max_length=7, editable=False, null=True, blank=True)  # YYYY-MM format, auto from discharge date
     
     # Date fields
     date_of_admission = models.DateField(null=True, blank=True)
@@ -31,20 +31,21 @@ class Claim(models.Model):
     claim_id = models.CharField(max_length=100, blank=True, null=True)
     uhid_ip_no = models.CharField(max_length=100, blank=True)
     patient_name = models.CharField(max_length=200, blank=True)
+    utr_number = models.CharField(max_length=100, blank=True, null=True, help_text="Unique Transaction Reference Number")
     
     # Financial fields
     bill_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0'))])
     approved_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0'))])
-    mou_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    co_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    consumable_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    hospital_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    paid_by_patient = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    mou_discount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    co_pay = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    consumable_deduction = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    hospital_discount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    paid_by_patient = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
     hospital_discount_authority = models.CharField(max_length=200, blank=True)
-    other_deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    tds = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    amount_settled_in_ac = models.DecimalField(max_digits=15, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
-    total_settled_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    other_deductions = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    tds = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    amount_settled_in_ac = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
+    total_settled_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, default=0, validators=[MinValueValidator(Decimal('0'))])
     difference_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)  # calculated field
     reason_less_settlement = models.TextField(blank=True)
     
@@ -71,6 +72,7 @@ class Claim(models.Model):
             models.Index(fields=['month']),
             models.Index(fields=['tpa_name']),
             models.Index(fields=['settlement_date']),
+            models.Index(fields=['utr_number']),
         ]
     
     def save(self, *args, **kwargs):
@@ -78,12 +80,17 @@ class Claim(models.Model):
         if self.date_of_discharge:
             self.month = self.date_of_discharge.strftime('%Y-%m')
         else:
-            self.month = ''  # Empty string for missing discharge date
+            self.month = None  # Null for missing discharge date
         
-        # Calculate difference amount - handle None values
-        approved = self.approved_amount or 0
+        # Calculate difference amount with new formula
+        # difference_amount = bill_amount - (total_settled_amount + tds + patient_paid + mou_discount)
+        bill = self.bill_amount or 0
         settled = self.total_settled_amount or 0
-        self.difference_amount = approved - settled
+        tds = self.tds or 0
+        patient_paid = self.paid_by_patient or 0
+        mou_discount = self.mou_discount or 0
+        
+        self.difference_amount = bill - (settled + tds + patient_paid + mou_discount)
         
         super().save(*args, **kwargs)
     
