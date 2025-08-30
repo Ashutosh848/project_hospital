@@ -106,6 +106,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://your-frontend-domain.vercel.app",  # Replace with your Vercel domain
     "https://*.vercel.app",  # Allow all Vercel domains
+    "https://*.railway.app",  # Allow Railway domains
 ]
 
 CORS_ALLOW_HEADERS = [
