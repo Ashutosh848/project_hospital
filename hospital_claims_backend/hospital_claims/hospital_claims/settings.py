@@ -114,7 +114,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://your-frontend-domain.vercel.app",  # Replace with your Vercel domain
+    "https://hope-hospital-claim.vercel.app",  # Your Vercel domain
     "https://*.vercel.app",  # Allow all Vercel domains
     "https://*.railway.app",  # Allow Railway domains
 ]
@@ -128,9 +128,20 @@ CORS_ALLOW_HEADERS = [
     'origin',
     'user-agent',
     'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ['*']
 
 # CSRF Settings
 CSRF_COOKIE_SAMESITE = 'Lax'
