@@ -46,7 +46,7 @@ export const claimsService = {
     if (page > 1) params.append('page', page.toString());
     if (search) params.append('search', search);
     
-    const response = await api.get<ClaimsResponse>(`/claims/?${params.toString()}`);
+    const response = await api.get<ClaimsResponse>(`/api/claims/?${params.toString()}`);
     return response.data;
   },
 
@@ -60,7 +60,7 @@ export const claimsService = {
       params.append('page', page.toString());
       params.append('page_size', '100'); // Request 100 items per page
       
-      const response = await api.get<ClaimsResponse>(`/claims/?${params.toString()}`);
+      const response = await api.get<ClaimsResponse>(`/api/claims/?${params.toString()}`);
       allClaims = [...allClaims, ...response.data.results];
       
       // Check if there are more pages
@@ -79,7 +79,7 @@ export const claimsService = {
   },
 
   async getClaim(id: string): Promise<Claim> {
-    const response = await api.get<Claim>(`/claims/${id}/`);
+    const response = await api.get<Claim>(`/api/claims/${id}/`);
     return response.data;
   },
 
@@ -103,7 +103,7 @@ export const claimsService = {
       });
     }
 
-    const response = await api.post<Claim>('/claims/', formData, {
+    const response = await api.post<Claim>('/api/claims/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -133,7 +133,7 @@ export const claimsService = {
 
 
 
-    const response = await api.patch<Claim>(`/claims/${id}/`, formData, {
+    const response = await api.patch<Claim>(`/api/claims/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -142,27 +142,27 @@ export const claimsService = {
   },
 
   async deleteClaim(id: string): Promise<void> {
-    await api.delete(`/claims/${id}/`);
+    await api.delete(`/api/claims/${id}/`);
   },
 
   async deleteClaimFile(claimId: string, fileField: string): Promise<void> {
-    await api.delete(`/claims/${claimId}/delete-file/${fileField}/`);
+    await api.delete(`/api/claims/${claimId}/delete-file/${fileField}/`);
   },
 
   async getDashboardStats(params?: string): Promise<DashboardStats> {
-    const url = params ? `/claims/dashboard/summary/?${params}` : '/claims/dashboard/summary/';
+    const url = params ? `/api/claims/dashboard/summary/?${params}` : '/api/claims/dashboard/summary/';
     const response = await api.get<DashboardStats>(url);
     return response.data;
   },
 
   async getMonthwiseData(params?: string): Promise<ChartData[]> {
-    const url = params ? `/claims/dashboard/monthwise/?${params}` : '/claims/dashboard/monthwise/';
+    const url = params ? `/api/claims/dashboard/monthwise/?${params}` : '/api/claims/dashboard/monthwise/';
     const response = await api.get<ChartData[]>(url);
     return response.data;
   },
 
   async getCompanywiseData(params?: string): Promise<ChartData[]> {
-    const url = params ? `/claims/dashboard/companywise/?${params}` : '/claims/dashboard/companywise/';
+    const url = params ? `/api/claims/dashboard/companywise/?${params}` : '/api/claims/dashboard/companywise/';
     const response = await api.get<ChartData[]>(url);
     return response.data;
   },
