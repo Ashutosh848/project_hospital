@@ -54,6 +54,7 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'hospital_claims.wsgi.application'
 
 # PostgreSQL Database Configuration
@@ -115,6 +116,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://your-frontend-domain.vercel.app",  # Replace with your Vercel domain
     "https://*.vercel.app",  # Allow all Vercel domains
+    "https://*.railway.app",  # Allow Railway domains
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -163,7 +165,8 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_REDIRECT_EXEMPT = []
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Disable SSL redirect for Railway (they handle HTTPS)
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
