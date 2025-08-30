@@ -54,6 +54,7 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'hospital_claims.wsgi.application'
 
 # PostgreSQL Database Configuration
