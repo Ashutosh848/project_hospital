@@ -35,10 +35,10 @@ const schema = yup.object<ClaimFormData>({
   reason_less_settlement: yup.string().nullable().optional(),
   claim_settled_software: yup.boolean().optional(),
   receipt_verified_bank: yup.boolean().optional(),
-  approval_letter: yup.mixed().optional(),
-  physical_file_upload: yup.mixed().optional(),
-  query_on_claim: yup.mixed().optional(),
-  query_reply_upload: yup.mixed().optional()
+  approval_letter_uploaded: yup.boolean().optional(),
+  physical_file_uploaded: yup.boolean().optional(),
+  query_on_claim_uploaded: yup.boolean().optional(),
+  query_reply_uploaded: yup.boolean().optional()
 });
 
 
@@ -70,86 +70,28 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
     defaultValues: {}
   });
 
-  const [deletedFiles, setDeletedFiles] = useState<Set<string>>(new Set());
-
-  const handleDeleteFile = async (fileField: string) => {
-    if (initialData?.id) {
-      try {
-        await claimsService.deleteClaimFile(initialData.id, fileField);
-        setDeletedFiles(prev => new Set([...prev, fileField]));
-        console.log(`File ${fileField} deleted successfully`);
-      } catch (error) {
-        console.error('Failed to delete file:', error);
-        alert('Failed to delete file. Please try again.');
-      }
-    }
-  };
-
-  const getFileName = (fileUrl: string | File | null) => {
-    if (!fileUrl) return '';
-    if (typeof fileUrl === 'string') {
-      return fileUrl.split('/').pop() || 'File';
-    }
-    return fileUrl.name || 'File';
-  };
-
-  const renderFileField = (
+  const renderCheckboxField = (
     fieldName: string,
     label: string,
-    fileValue: string | File | null
+    checked: boolean = false
   ) => {
-    const hasExistingFile = fileValue && typeof fileValue === 'string' && !deletedFiles.has(fieldName);
-    
     return (
-      <div>
-        <label className="block text-base font-semibold text-gray-900 mb-2">
+      <div className="flex items-center space-x-3">
+        <input
+          type="checkbox"
+          id={fieldName}
+          {...register(fieldName as keyof ClaimFormData)}
+          defaultChecked={checked}
+          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+        />
+        <label htmlFor={fieldName} className="text-sm font-bold text-black">
           {label}
         </label>
-        
-        {hasExistingFile && (
-          <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Download className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-gray-700">
-                {getFileName(fileValue)}
-              </span>
-              <a
-                href={fileValue as string}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                View
-              </a>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleDeleteFile(fieldName)}
-              className="text-red-600 hover:text-red-800 p-1"
-              title="Delete file"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-        
-        <div className="flex items-center space-x-2">
-          <input
-            type="file"
-            accept=".pdf"
-            {...register(fieldName as keyof ClaimFormData)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
-          <Upload className="w-5 h-5 text-gray-400" />
-        </div>
       </div>
     );
   };
 
   useEffect(() => {
-    // Reset deleted files when form opens
-    setDeletedFiles(new Set());
-    
     if (initialData) {
       // Convert Claim type to ClaimFormData type
       const formData: ClaimFormData = {
@@ -250,11 +192,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
             formData.append(key, data[key]);
           }
         }
-        // Handle file deletions - send a signal to remove the file
-        if (deletedFiles.has(key)) {
-          formData.append(`${key}_delete`, 'true');
-        }
-        // Skip empty file fields completely
+        // Skip file fields - they are now boolean checkboxes
         return;
       }
       
@@ -576,7 +514,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     )}
                   </div>
 
-                  {renderFileField('approval_letter', 'Approval Letter Upload (PDF)', initialData?.approval_letter)}
+                  {renderCheckboxField('approval_letter_uploaded', 'Approval Letter Uploaded', initialData?.approval_letter_uploaded)}
 
                   <div>
                     <label className="block text-base font-semibold text-gray-900 mb-2">
@@ -639,9 +577,9 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     />
                   </div>
 
-                  {renderFileField('physical_file_upload', 'POD Upload (PDF Format)', initialData?.physical_file_upload)}
+                  {renderCheckboxField('physical_file_uploaded', 'Physical File Uploaded', initialData?.physical_file_uploaded)}
 
-                  {renderFileField('query_on_claim', 'Query on Claim (PDF Format)', initialData?.query_on_claim)}
+                  {renderCheckboxField('query_on_claim_uploaded', 'Query on Claim Uploaded', initialData?.query_on_claim_uploaded)}
 
                   <div>
                     <DateInput
@@ -653,7 +591,7 @@ export const ClaimForm: React.FC<ClaimFormProps> = ({
                     />
                   </div>
 
-                  {renderFileField('query_reply_upload', 'Query Reply Upload (PDF Format)', initialData?.query_reply_upload)}
+                  {renderCheckboxField('query_reply_uploaded', 'Query Reply Uploaded', initialData?.query_reply_uploaded)}
 
                   <div>
                     <DateInput

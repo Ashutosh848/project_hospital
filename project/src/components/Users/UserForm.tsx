@@ -19,9 +19,9 @@ const schema = yup.object({
       return value.length >= 6;
     })
   }),
-  role: yup.string().required('Role is required').test('valid-role', 'Please enter either "data_entry" or "manager"', function(value) {
+  role: yup.string().required('Role is required').test('valid-role', 'Please enter either "dataentry" or "manager"', function(value) {
     if (!value) return false;
-    const validRoles = ['data_entry', 'manager'];
+    const validRoles = ['dataentry', 'manager'];
     return validRoles.includes(value.toLowerCase().trim());
   })
 });
@@ -63,7 +63,7 @@ export const UserForm: React.FC<UserFormProps> = ({
       username: '',
       email: '',
       password: '',
-      role: 'data_entry'
+              role: 'dataentry'
     }
   });
 
@@ -83,9 +83,9 @@ export const UserForm: React.FC<UserFormProps> = ({
         username: '',
         email: '',
         password: '',
-        role: 'data_entry'
-      });
-      setRoleInput('data_entry');
+            role: 'dataentry'
+  });
+      setRoleInput('dataentry');
     }
     setShowRoleSuggestion(false);
   }, [initialData, reset]);
@@ -95,7 +95,7 @@ export const UserForm: React.FC<UserFormProps> = ({
     setValue('role', value);
     
     // Show suggestion if input doesn't match valid roles
-    const validRoles = ['data_entry', 'manager'];
+    const validRoles = ['dataentry', 'manager'];
     const normalizedValue = value.toLowerCase().trim();
     setShowRoleSuggestion(value.length > 0 && !validRoles.includes(normalizedValue));
   };
@@ -196,7 +196,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                   value={roleInput}
                   onChange={(e) => handleRoleChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter role (data_entry or manager)"
+                  placeholder="Enter role (dataentry or manager)"
                 />
                 {showRoleSuggestion && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -204,10 +204,10 @@ export const UserForm: React.FC<UserFormProps> = ({
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleRoleChange('data_entry')}
+                        onClick={() => handleRoleChange('dataentry')}
                         className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
                       >
-                        data_entry
+                        dataentry
                       </button>
                       <button
                         type="button"

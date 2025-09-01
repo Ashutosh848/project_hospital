@@ -49,12 +49,12 @@ class Claim(models.Model):
     difference_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)  # calculated field
     reason_less_settlement = models.TextField(blank=True)
     
-    # File fields
-    approval_letter = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
+    # File upload status fields (checkboxes)
+    approval_letter_uploaded = models.BooleanField(default=False, verbose_name="Approval Letter Uploaded")
     physical_file_dispatch = models.CharField(max_length=20, choices=PHYSICAL_FILE_DISPATCH_CHOICES, default='pending')
-    physical_file_upload = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
-    query_on_claim = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
-    query_reply_upload = models.FileField(upload_to=claim_file_upload_path, null=True, blank=True)
+    physical_file_uploaded = models.BooleanField(default=False, verbose_name="Physical File Uploaded")
+    query_on_claim_uploaded = models.BooleanField(default=False, verbose_name="Query on Claim Uploaded")
+    query_reply_uploaded = models.BooleanField(default=False, verbose_name="Query Reply Uploaded")
     
     # Boolean fields
     claim_settled_software = models.BooleanField(default=False)

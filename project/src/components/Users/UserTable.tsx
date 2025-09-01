@@ -68,7 +68,7 @@ export const UserTable: React.FC<UserTableProps> = ({
           >
             <option value="">All Roles</option>
             <option value="manager">Manager</option>
-            <option value="data_entry">Data Entry</option>
+                            <option value="dataentry">Data Entry</option>
           </select>
           
           <select

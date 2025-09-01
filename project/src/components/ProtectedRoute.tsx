@@ -4,12 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('data_entry' | 'manager')[];
+  allowedRoles?: ('dataentry' | 'manager')[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  allowedRoles = ['data_entry', 'manager']
+  allowedRoles = ['dataentry', 'manager']
 }) => {
   const { user, isLoading } = useAuth();
 

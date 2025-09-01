@@ -219,7 +219,7 @@ export const Dashboard: React.FC = () => {
 
   const handleExportReport = () => {
     // Implement export functionality
-    console.log('Exporting dashboard report...');
+
   };
 
   return (

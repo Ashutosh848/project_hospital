@@ -26,10 +26,11 @@ export interface CreateClaimRequest {
   paid_by_patient: number;
   hospital_discount_authority: string;
   other_deductions: number;
-  approval_letter?: File;
+  approval_letter_uploaded: boolean;
   physical_file_dispatch: 'pending' | 'dispatched' | 'received' | 'not_required';
-  physical_file_upload?: File;
-  query_on_claim?: File;
+  physical_file_uploaded: boolean;
+  query_on_claim_uploaded: boolean;
+  query_reply_uploaded: boolean;
   query_reply_date: string;
   settlement_date: string;
   tds: number;
@@ -74,7 +75,6 @@ export const claimsService = {
       }
     }
     
-    console.log('Fetched all claims:', allClaims.length);
     return allClaims;
   },
 
@@ -83,61 +83,13 @@ export const claimsService = {
     return response.data;
   },
 
-  async createClaim(claimData: CreateClaimRequest | FormData): Promise<Claim> {
-    let formData: FormData;
-    
-    if (claimData instanceof FormData) {
-      formData = claimData;
-    } else {
-      formData = new FormData();
-      
-      // Add all text fields
-      Object.entries(claimData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (value instanceof File) {
-            formData.append(key, value);
-          } else {
-            formData.append(key, String(value));
-          }
-        }
-      });
-    }
-
-    const response = await api.post<Claim>('/api/claims/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+  async createClaim(claimData: CreateClaimRequest): Promise<Claim> {
+    const response = await api.post<Claim>('/api/claims/', claimData);
     return response.data;
   },
 
-  async updateClaim(id: string, claimData: Partial<CreateClaimRequest> | FormData): Promise<Claim> {
-    let formData: FormData;
-    
-    if (claimData instanceof FormData) {
-      formData = claimData;
-    } else {
-      formData = new FormData();
-      
-      // Add all text fields
-      Object.entries(claimData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (value instanceof File) {
-            formData.append(key, value);
-          } else {
-            formData.append(key, String(value));
-          }
-        }
-      });
-    }
-
-
-
-    const response = await api.patch<Claim>(`/api/claims/${id}/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+  async updateClaim(id: string, claimData: Partial<CreateClaimRequest>): Promise<Claim> {
+    const response = await api.patch<Claim>(`/api/claims/${id}/`, claimData);
     return response.data;
   },
 
@@ -145,8 +97,8 @@ export const claimsService = {
     await api.delete(`/api/claims/${id}/`);
   },
 
-  async deleteClaimFile(claimId: string, fileField: string): Promise<void> {
-    await api.delete(`/api/claims/${claimId}/delete-file/${fileField}/`);
+  async updateFileStatus(claimId: string, fileField: string, uploaded: boolean): Promise<void> {
+    await api.patch(`/api/claims/${claimId}/update-file-status/${fileField}/`, { uploaded });
   },
 
   async getDashboardStats(params?: string): Promise<DashboardStats> {

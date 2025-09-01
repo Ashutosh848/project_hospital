@@ -19,7 +19,6 @@ class ClaimListCreateView(generics.ListCreateAPIView):
     search_fields = ['claim_id', 'patient_name', 'uhid_ip_no']
     ordering_fields = ['date_of_discharge', 'settlement_date', 'bill_amount', 'approved_amount']
     ordering = ['-created_at']
-    
     def get_serializer_class(self):
         # if self.request.method == 'GET':
         #     return ClaimListSerializer
@@ -49,15 +48,15 @@ class ClaimRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         """Handle PATCH requests for partial updates"""
         return self.update(request, *args, **kwargs)
 
-@api_view(['DELETE'])
+@api_view(['PATCH'])
 @permission_classes([IsDataEntryOrManager])
-def delete_claim_file(request, claim_id, file_field):
-    """Delete a specific file from a claim"""
+def update_file_status(request, claim_id, file_field):
+    """Update file upload status for a claim"""
     try:
         claim = get_object_or_404(Claim, id=claim_id)
         
-        # Valid file fields that can be deleted
-        valid_fields = ['approval_letter', 'physical_file_upload', 'query_on_claim', 'query_reply_upload']
+        # Valid file status fields
+        valid_fields = ['approval_letter_uploaded', 'physical_file_uploaded', 'query_on_claim_uploaded', 'query_reply_uploaded']
         
         if file_field not in valid_fields:
             return Response(
@@ -65,34 +64,24 @@ def delete_claim_file(request, claim_id, file_field):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get the file field
-        file_obj = getattr(claim, file_field)
+        # Get the new status from request
+        new_status = request.data.get('uploaded', False)
+        if isinstance(new_status, str):
+            new_status = new_status.lower() in ['true', '1', 'yes', 'on']
         
-        if not file_obj:
-            return Response(
-                {'error': 'No file found for this field'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Delete the physical file from disk
-        try:
-            if file_obj.path and os.path.exists(file_obj.path):
-                os.remove(file_obj.path)
-        except Exception as e:
-            # Log the error but continue with database cleanup
-            print(f"Error deleting physical file: {e}")
-        
-        # Clear the file field in the database
-        setattr(claim, file_field, None)
+        # Update the file status
+        setattr(claim, file_field, new_status)
         claim.save()
         
         return Response({
-            'message': f'File {file_field} deleted successfully'
+            'message': f'File status updated successfully',
+            'field': file_field,
+            'uploaded': new_status
         }, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response(
-            {'error': f'Error deleting file: {str(e)}'}, 
+            {'error': f'Error updating file status: {str(e)}'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -191,7 +180,6 @@ def dashboard_monthwise(request):
                     })
             except (ValueError, TypeError, AttributeError) as e:
                 # Skip invalid month data
-                print(f"Skipping invalid month data: {item['month']}, error: {e}")
                 continue
         
         # Format for frontend ChartData[] format
