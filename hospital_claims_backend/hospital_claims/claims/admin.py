@@ -33,8 +33,8 @@ class ClaimAdmin(admin.ModelAdmin):
         }),
         ('File Management', {
             'fields': (
-                'approval_letter', 'physical_file_dispatch', 'physical_file_upload', 
-                'query_on_claim'
+                'approval_letter_uploaded', 'physical_file_dispatch', 'physical_file_uploaded', 
+                'query_on_claim_uploaded', 'query_reply_uploaded'
             )
         }),
         ('Status', {

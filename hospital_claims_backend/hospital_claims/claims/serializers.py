@@ -33,11 +33,11 @@ class ClaimSerializer(serializers.ModelSerializer):
     receipt_verified_bank = serializers.BooleanField(required=False, default=False)
     physical_file_dispatch = serializers.ChoiceField(choices=Claim.PHYSICAL_FILE_DISPATCH_CHOICES, required=False, default='pending')
     
-    # Make file fields optional and handle empty files
-    approval_letter = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
-    physical_file_upload = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
-    query_on_claim = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
-    query_reply_upload = serializers.FileField(required=False, allow_null=True, allow_empty_file=False)
+    # File upload status fields (boolean checkboxes)
+    approval_letter_uploaded = serializers.BooleanField(required=False, default=False)
+    physical_file_uploaded = serializers.BooleanField(required=False, default=False)
+    query_on_claim_uploaded = serializers.BooleanField(required=False, default=False)
+    query_reply_uploaded = serializers.BooleanField(required=False, default=False)
     
     class Meta:
         model = Claim
@@ -58,21 +58,15 @@ class ClaimSerializer(serializers.ModelSerializer):
                     "Settlement date cannot be before discharge date."
                 )
         
-        # Handle file deletions
-        file_fields = ['approval_letter', 'physical_file_upload', 'query_on_claim', 'query_reply_upload']
-        for field in file_fields:
-            delete_key = f'{field}_delete'
-            if delete_key in data and data[delete_key] == 'true':
-                # Mark the field for deletion
-                data[field] = None
-                data.pop(delete_key, None)
-        
-        # Handle empty files - remove them from data if they're empty
-        for field in file_fields:
-            if field in data and data[field] is not None:
-                # Check if file is empty (no name or size 0)
-                if hasattr(data[field], 'name') and (not data[field].name or data[field].size == 0):
-                    data.pop(field, None)
+        # Handle file upload status fields (boolean checkboxes)
+        file_status_fields = ['approval_letter_uploaded', 'physical_file_uploaded', 'query_on_claim_uploaded', 'query_reply_uploaded']
+        for field in file_status_fields:
+            if field in data:
+                # Ensure boolean values
+                if isinstance(data[field], str):
+                    data[field] = data[field].lower() in ['true', '1', 'yes', 'on']
+                elif data[field] is None:
+                    data[field] = False
         
         # Handle empty string values - convert them to None for nullable fields
         nullable_fields = [

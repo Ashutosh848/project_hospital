@@ -5,7 +5,7 @@ from .views import (
     dashboard_summary,
     ClaimListCreateView,
     ClaimRetrieveUpdateDestroyView,
-    delete_claim_file,
+    update_file_status,
 )
 
 urlpatterns = [
@@ -13,8 +13,8 @@ urlpatterns = [
     path('', ClaimListCreateView.as_view(), name='claim-list-create'),
     path('<int:pk>/', ClaimRetrieveUpdateDestroyView.as_view(), name='claim-detail'),
     
-    # File management
-    path('<int:claim_id>/delete-file/<str:file_field>/', delete_claim_file, name='delete-claim-file'),
+    # File status management
+    path('<int:claim_id>/update-file-status/<str:file_field>/', update_file_status, name='update-file-status'),
     
     # Dashboard endpoints
     path('dashboard/summary/', dashboard_summary, name='dashboard-summary'),

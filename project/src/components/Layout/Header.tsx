@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Implement search functionality
-    console.log('Searching for:', searchQuery);
+
   };
 
   const handleLogout = () => {

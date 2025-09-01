@@ -382,7 +382,7 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   };
 
   const handleBulkAction = (action: string) => {
-    console.log(`Bulk ${action} for claims:`, selectedClaims);
+
     // Implement bulk actions
   };
 
@@ -468,41 +468,27 @@ export const ClaimTable: React.FC<ClaimTableProps> = ({
   };
 
   const renderFilesColumn = (claim: Claim) => {
-    const files = [];
+    const fileStatuses = [
+      { name: 'Approval Letter', uploaded: claim.approval_letter_uploaded },
+      { name: 'Physical File', uploaded: claim.physical_file_uploaded },
+      { name: 'Query on Claim', uploaded: claim.query_on_claim_uploaded },
+      { name: 'Query Reply', uploaded: claim.query_reply_uploaded }
+    ];
     
-    if (claim.approval_letter) {
-      files.push({
-        name: 'Approval Letter',
-        url: typeof claim.approval_letter === 'string' ? claim.approval_letter : null,
-        type: 'approval_letter'
-      });
-    }
+    const uploadedFiles = fileStatuses.filter(file => file.uploaded);
     
-    if (claim.physical_file_upload) {
-      files.push({
-        name: 'POD Upload',
-        url: typeof claim.physical_file_upload === 'string' ? claim.physical_file_upload : null,
-        type: 'physical_file_upload'
-      });
-    }
-    
-    if (claim.query_on_claim) {
-      files.push({
-        name: 'Query on Claim',
-        url: typeof claim.query_on_claim === 'string' ? claim.query_on_claim : null,
-        type: 'query_on_claim'
-      });
-    }
-    
-    if (files.length === 0) {
-      return <span className="text-gray-400 text-sm">No files</span>;
+    if (uploadedFiles.length === 0) {
+      return <span className="text-gray-400 text-sm">No files uploaded</span>;
     }
     
     return (
       <div className="space-y-1">
-        {files.map((file, index) => (
-          <div key={index} className="flex items-center gap-1">
-            {getFileBadge(file.url, file.name)}
+        {fileStatuses.map((file, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${file.uploaded ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className={`text-xs ${file.uploaded ? 'text-green-700' : 'text-gray-500'}`}>
+              {file.name}
+            </span>
           </div>
         ))}
       </div>

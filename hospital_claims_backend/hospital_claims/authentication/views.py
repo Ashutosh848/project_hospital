@@ -25,7 +25,8 @@ def login_view(request):
                 'role': user.role,
             }
         })
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = CustomUser.objects.all()

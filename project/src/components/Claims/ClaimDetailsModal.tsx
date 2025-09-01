@@ -160,71 +160,49 @@ export const ClaimDetailsModal: React.FC<ClaimDetailsModalProps> = ({
                     <FileText className="w-5 h-5 mr-2" />
                     File Management
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Approval Letter */}
                     <div className="bg-white rounded-lg p-3 border">
                       <h5 className="font-medium text-gray-900 mb-2">Approval Letter</h5>
-                      {claim.approval_letter && typeof claim.approval_letter === 'string' ? (
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm text-gray-600 flex-1 truncate">
-                            {claim.approval_letter.split('/').pop()}
-                          </span>
-                          <button
-                            onClick={() => window.open(claim.approval_letter as string, '_blank')}
-                            className="text-blue-600 hover:text-blue-900 transition-colors"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">No file uploaded</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${claim.approval_letter_uploaded ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm ${claim.approval_letter_uploaded ? 'text-green-700' : 'text-gray-500'}`}>
+                          {claim.approval_letter_uploaded ? 'Uploaded' : 'Not Uploaded'}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* POD Upload */}
+                    {/* Physical File */}
                     <div className="bg-white rounded-lg p-3 border">
-                      <h5 className="font-medium text-gray-900 mb-2">POD Upload</h5>
-                      {claim.physical_file_upload && typeof claim.physical_file_upload === 'string' ? (
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-gray-600 flex-1 truncate">
-                            {claim.physical_file_upload.split('/').pop()}
-                          </span>
-                          <button
-                            onClick={() => window.open(claim.physical_file_upload as string, '_blank')}
-                            className="text-green-600 hover:text-green-900 transition-colors"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">No file uploaded</span>
-                      )}
+                      <h5 className="font-medium text-gray-900 mb-2">Physical File</h5>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${claim.physical_file_uploaded ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm ${claim.physical_file_uploaded ? 'text-green-700' : 'text-gray-500'}`}>
+                          {claim.physical_file_uploaded ? 'Uploaded' : 'Not Uploaded'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Query on Claim */}
                     <div className="bg-white rounded-lg p-3 border">
                       <h5 className="font-medium text-gray-900 mb-2">Query on Claim</h5>
-                      {claim.query_on_claim && typeof claim.query_on_claim === 'string' ? (
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-orange-600" />
-                          <span className="text-sm text-gray-600 flex-1 truncate">
-                            {claim.query_on_claim.split('/').pop()}
-                          </span>
-                          <button
-                            onClick={() => window.open(claim.query_on_claim as string, '_blank')}
-                            className="text-orange-600 hover:text-orange-900 transition-colors"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">No file uploaded</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${claim.query_on_claim_uploaded ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm ${claim.query_on_claim_uploaded ? 'text-green-700' : 'text-gray-500'}`}>
+                          {claim.query_on_claim_uploaded ? 'Uploaded' : 'Not Uploaded'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Query Reply */}
+                    <div className="bg-white rounded-lg p-3 border">
+                      <h5 className="font-medium text-gray-900 mb-2">Query Reply</h5>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${claim.query_reply_uploaded ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm ${claim.query_reply_uploaded ? 'text-green-700' : 'text-gray-500'}`}>
+                          {claim.query_reply_uploaded ? 'Uploaded' : 'Not Uploaded'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   

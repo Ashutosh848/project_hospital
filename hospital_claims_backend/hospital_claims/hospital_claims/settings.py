@@ -194,4 +194,3 @@ if not DEBUG:
     ]
     CSRF_COOKIE_DOMAIN = None
     SESSION_COOKIE_DOMAIN = None
-

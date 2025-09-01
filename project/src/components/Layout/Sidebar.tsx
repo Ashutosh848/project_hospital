@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           icon: Clipboard,
           label: 'All Claims',
           description: 'View and manage all claims',
-          roles: ['data_entry', 'manager']
+          roles: ['dataentry', 'manager']
         }
       ]
     },
